@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tweet Carousel</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 60px;
+    padding: 40px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  .slide-label {
+    color: #555;
+    font-size: 14px;
+    font-family: monospace;
+  }
+
+  .slide {
+    width: 1080px;
+    height: 1440px;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tweet-container {
+    padding: 0 72px;
+    width: 100%;
+  }
+
+  .tweet-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 36px;
+  }
+
+  .profile-pic {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .name-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .display-name {
+    color: #e7e9ea;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .verified-badge {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    position: relative;
+    top: 1px;
+  }
+
+  .handle {
+    color: #71767b;
+    font-size: 26px;
+    font-weight: 400;
+  }
+
+  .tweet-text {
+    color: #e7e9ea;
+    font-size: 38px;
+    font-weight: 400;
+    line-height: 1.35;
+    letter-spacing: -0.3px;
+  }
+
+  .tweet-text p {
+    margin-bottom: 32px;
+  }
+
+  .tweet-text p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Carousel dots */
+  .dots {
+    position: absolute;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+  }
+
+  .dot.active {
+    background: rgba(255,255,255,0.85);
+  }
+</style>
+</head>
+<body>
+
+<p class="slide-label">SLIDE 1 - SAMPLE</p>
+<div class="slide" id="slide1">
+  <div class="tweet-container">
+    <div class="tweet-header">
+      <img class="profile-pic" src="eddie-pfp.jpg" alt="Eddie Maalouf">
+      <div class="name-section">
+        <div class="name-row">
+          <span class="display-name">Eddie Maalouf</span>
+          <svg class="verified-badge" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20.396 11c0 .352-.036.7-.103 1.04a4.89 4.89 0 01-.593 1.49 4.93 4.93 0 01-1.039 1.29c-.395.38-.842.693-1.332.93a4.93 4.93 0 01-1.53.543 5.03 5.03 0 01-1.61.088 4.89 4.89 0 01-1.52-.396 4.93 4.93 0 01-1.303-.863l-.078-.078-.08.078a4.93 4.93 0 01-1.302.863 4.89 4.89 0 01-1.521.396 5.03 5.03 0 01-1.609-.088 4.93 4.93 0 01-1.531-.544 4.93 4.93 0 01-1.332-.929 4.93 4.93 0 01-1.04-1.29 4.89 4.89 0 01-.592-1.49 5.03 5.03 0 01-.104-1.04 5.03 5.03 0 01.104-1.04c.11-.51.308-.99.593-1.49a4.93 4.93 0 011.039-1.29c.395-.38.842-.693 1.332-.93a4.93 4.93 0 011.53-.543 5.03 5.03 0 011.61-.088c.527.07 1.037.2 1.52.396a4.93 4.93 0 011.303.863l.078.078.08-.078a4.93 4.93 0 011.302-.863 4.89 4.89 0 011.521-.396 5.03 5.03 0 011.609.088 4.93 4.93 0 011.531.544c.49.236.937.55 1.332.929.395.38.739.813 1.04 1.29.284.5.482.98.592 1.49.067.34.103.688.103 1.04z" fill="#1D9BF0"/>
+            <path d="M9.64844 14.0625L7.35156 11.7656C7.10156 11.5156 7.10156 11.1094 7.35156 10.8594L7.95312 10.2578C8.20312 10.0078 8.60938 10.0078 8.85938 10.2578L10.1016 11.5L13.1875 8.41406C13.4375 8.16406 13.8438 8.16406 14.0938 8.41406L14.6953 9.01562C14.9453 9.26562 14.9453 9.67188 14.6953 9.92188L10.5547 14.0625C10.3047 14.3125 9.89844 14.3125 9.64844 14.0625Z" fill="white"/>
+          </svg>
+        </div>
+        <span class="handle">@imakeBADads</span>
+      </div>
+    </div>
+    <div class="tweet-text">
+      <p>Most agency owners are chasing clients.</p>
+      <p>The smart ones are building systems.</p>
+      <p>One scales. The other burns you out.</p>
+    </div>
+  </div>
+
+  <div class="dots">
+    <div class="dot active"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+</div>
+
+</body>
+</html>

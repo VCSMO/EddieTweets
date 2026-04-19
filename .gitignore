@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / local config
+.claude/settings.local.json
+.vscode/
+.idea/
+
+# Generated output
+slides/*.png
+slides/*.mp4
+/tmp/
+
+# Env
+.env
+.env.*

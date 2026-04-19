@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Eddie Tweet Carousel Builder</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <h1>Tweet Carousel Builder</h1>
+  </div>
+  <div class="format-toggle">
+    <button class="fmt-btn active" data-fmt="carousel">Carousel (3:4)</button>
+    <button class="fmt-btn" data-fmt="single">Single Tweet (9:16 · 7s MP4)</button>
+  </div>
+  <div class="actions">
+    <button id="downloadAll" class="btn btn-primary">Download All (ZIP)</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- Left panel: slide editors -->
+  <section class="editor-panel">
+    <div class="panel-header">
+      <h2>Slides</h2>
+      <button id="addSlide" class="btn btn-ghost">+ Add Slide</button>
+    </div>
+    <div id="slides" class="slides-list"></div>
+
+    <details class="advanced">
+      <summary>Advanced Settings</summary>
+      <div class="advanced-grid">
+        <label>PFP Zoom <input type="number" id="pfp_zoom" value="1.18" step="0.01" min="1" max="2"></label>
+        <label>PFP Size <input type="number" id="pfp_size" step="5"></label>
+        <label>Name Size <input type="number" id="font_name_size" step="1"></label>
+        <label>Handle Size <input type="number" id="font_handle_size" step="1"></label>
+        <label>Tweet Size <input type="number" id="font_tweet_size" step="1"></label>
+        <label>Line Gap <input type="number" id="line_gap" value="18" step="1"></label>
+        <label>Para Gap <input type="number" id="para_gap" value="36" step="1"></label>
+        <label>Header Gap <input type="number" id="header_gap" value="44" step="1"></label>
+      </div>
+    </details>
+  </section>
+
+  <!-- Right panel: previews -->
+  <section class="preview-panel">
+    <div class="panel-header">
+      <h2>Preview</h2>
+      <span id="formatLabel" class="format-label">1080 × 1440</span>
+    </div>
+    <div id="previews" class="previews"></div>
+  </section>
+
+</main>
+
+<template id="slideTemplate">
+  <div class="slide-card" data-slide-id="">
+    <div class="slide-card-header">
+      <span class="slide-num"></span>
+      <div class="slide-tools">
+        <button class="icon-btn move-up" title="Move up">↑</button>
+        <button class="icon-btn move-down" title="Move down">↓</button>
+        <button class="icon-btn duplicate" title="Duplicate">⎘</button>
+        <button class="icon-btn delete" title="Delete">✕</button>
+      </div>
+    </div>
+    <textarea class="slide-text" placeholder="Tweet text here... (empty line = paragraph break)" rows="6"></textarea>
+  </div>
+</template>
+
+<template id="previewTemplate">
+  <div class="preview-card">
+    <div class="preview-header">
+      <span class="preview-num"></span>
+      <button class="btn btn-ghost download-one">Download</button>
+    </div>
+    <div class="preview-frame">
+      <img class="preview-img" alt="Slide preview" />
+      <div class="preview-loader">Rendering...</div>
+    </div>
+  </div>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
