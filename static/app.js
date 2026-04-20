@@ -285,7 +285,6 @@
   // --- Mobile swipe carousel (syncs editor + preview) ---
   const mobileMedia = window.matchMedia("(max-width: 900px)");
   let currentSlideIndex = 0;
-  let syncing = false;
   let carousel = null;
 
   const initMobileCarousel = () => {
@@ -293,6 +292,12 @@
     const previewsEl = document.getElementById("previews");
     const dotsEl = document.querySelector(".slide-dots");
     const counterEl = document.querySelector(".slide-counter");
+
+    // Which carousel is the user actively interacting with.
+    // Scroll events from the *other* one are ignored while this is set,
+    // which prevents the two scrollers from fighting each other.
+    let activeEl = null;
+    let settleTimer = null;
 
     const slideWidthOf = (el) => {
       const child = el.firstElementChild;
@@ -303,6 +308,7 @@
 
     const indexOf = (el) => {
       const max = Math.max(0, el.children.length - 1);
+      if (max === 0) return 0;
       return Math.min(max, Math.max(0, Math.round(el.scrollLeft / slideWidthOf(el))));
     };
 
@@ -312,7 +318,7 @@
     };
 
     const updateIndicator = (idx) => {
-      currentSlideIndex = Math.min(idx, state.slides.length - 1);
+      currentSlideIndex = Math.max(0, Math.min(idx, state.slides.length - 1));
       if (counterEl) counterEl.textContent = `${currentSlideIndex + 1} / ${state.slides.length}`;
       dotsEl?.querySelectorAll(".slide-dot").forEach((d, i) => {
         d.classList.toggle("active", i === currentSlideIndex);
@@ -327,6 +333,7 @@
         dot.className = "slide-dot" + (i === currentSlideIndex ? " active" : "");
         dot.setAttribute("aria-label", `Go to slide ${i + 1}`);
         dot.addEventListener("click", () => {
+          activeEl = null;
           scrollToIndex(slidesEl, i);
           scrollToIndex(previewsEl, i);
           updateIndicator(i);
@@ -336,24 +343,52 @@
       updateIndicator(currentSlideIndex);
     };
 
-    const handleScroll = (source) => {
-      if (!mobileMedia.matches || syncing) return;
-      const idx = indexOf(source);
-      if (idx === currentSlideIndex) return;
-      syncing = true;
-      const target = source === slidesEl ? previewsEl : slidesEl;
-      scrollToIndex(target, idx);
-      updateIndicator(idx);
-      setTimeout(() => { syncing = false; }, 120);
+    // Touch ownership: mark which carousel the finger is on.
+    // This makes sure only the user-driven scroller triggers a sync.
+    const claim = (el) => () => { activeEl = el; };
+    const release = () => {
+      // Hold ownership briefly past touchend so momentum-scroll events
+      // from the same element still count, and the target's programmatic
+      // scroll doesn't steal ownership.
+      setTimeout(() => { activeEl = null; }, 400);
     };
 
-    slidesEl.addEventListener("scroll", () => handleScroll(slidesEl), { passive: true });
-    previewsEl.addEventListener("scroll", () => handleScroll(previewsEl), { passive: true });
+    [slidesEl, previewsEl].forEach((el) => {
+      el.addEventListener("touchstart", claim(el), { passive: true });
+      el.addEventListener("pointerdown", claim(el), { passive: true });
+      el.addEventListener("touchend", release, { passive: true });
+      el.addEventListener("touchcancel", release, { passive: true });
+    });
+
+    const onScroll = (source) => {
+      if (!mobileMedia.matches) return;
+      // Ignore scrolls on the carousel the user is NOT actively touching.
+      // If no one is touching (activeEl===null), we treat it as idle and skip too.
+      if (activeEl !== source) return;
+
+      // Live-update indicator while swiping
+      const idx = indexOf(source);
+      if (idx !== currentSlideIndex) updateIndicator(idx);
+
+      // Sync target only after the source has settled (~120ms of no scroll events)
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        const finalIdx = indexOf(source);
+        const target = source === slidesEl ? previewsEl : slidesEl;
+        if (indexOf(target) !== finalIdx) {
+          scrollToIndex(target, finalIdx, false); // instant, not smooth → no animation fight
+        }
+      }, 120);
+    };
+
+    slidesEl.addEventListener("scroll", () => onScroll(slidesEl), { passive: true });
+    previewsEl.addEventListener("scroll", () => onScroll(previewsEl), { passive: true });
 
     return {
       rebuildDots,
       snapToIndex: (idx) => {
         if (!mobileMedia.matches) return;
+        activeEl = null;
         scrollToIndex(slidesEl, idx, false);
         scrollToIndex(previewsEl, idx, false);
         updateIndicator(idx);
