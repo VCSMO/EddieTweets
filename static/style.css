@@ -374,3 +374,146 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
+
+/* --- Mobile (≤ 900px) --- */
+@media (max-width: 900px) {
+  html, body {
+    overflow: auto;
+    height: auto;
+    font-size: 15px;
+  }
+
+  /* Topbar: wrap to two rows, full-width actions on its own line */
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 14px;
+    height: auto;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .brand h1 {
+    font-size: 15px;
+  }
+
+  .format-toggle {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: stretch;
+  }
+
+  .fmt-btn {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .actions {
+    order: 2;
+  }
+
+  .actions .btn {
+    padding: 10px 14px;
+  }
+
+  /* Layout: stack editor on top, preview below */
+  .layout {
+    display: block;
+    height: auto;
+  }
+
+  .editor-panel,
+  .preview-panel {
+    overflow: visible;
+    border-right: none;
+  }
+
+  .editor-panel {
+    border-bottom: 8px solid var(--bg);
+  }
+
+  .slides-list {
+    padding: 12px;
+    overflow-y: visible;
+  }
+
+  /* Bigger touch targets */
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .slide-text {
+    min-height: 120px;
+    font-size: 16px; /* prevents iOS zoom on focus */
+    padding: 12px;
+  }
+
+  /* Advanced: single column so inputs are thumb-width */
+  .advanced {
+    padding: 14px;
+  }
+
+  .advanced-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .advanced-grid input {
+    padding: 10px 12px;
+    font-size: 16px; /* prevents iOS zoom */
+  }
+
+  /* Previews: single column, tighter padding */
+  .panel-header {
+    padding: 14px 16px;
+    position: sticky;
+    top: 0;
+    background: var(--bg-panel);
+    z-index: 5;
+  }
+
+  .preview-panel .panel-header {
+    background: var(--bg);
+  }
+
+  .previews {
+    padding: 14px;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    overflow-y: visible;
+  }
+
+  /* Big download button per preview */
+  .preview-header {
+    padding: 12px 14px;
+  }
+
+  .preview-header .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
+
+/* --- Narrow phones (≤ 420px) --- */
+@media (max-width: 420px) {
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-dot {
+    width: 24px;
+    height: 24px;
+  }
+
+  .brand-dot::after {
+    font-size: 14px;
+  }
+
+  .fmt-btn {
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+}
