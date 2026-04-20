@@ -130,14 +130,14 @@
     state.slides.forEach(s => renderSingle(s.id));
   };
 
-  const rebuildAll = () => {
+  let rebuildAll = () => {
     rebuildSlideEditors();
     rebuildPreviews();
     updateFormatLabel();
   };
 
   // --- Slide operations ---
-  const addSlide = () => {
+  let addSlide = () => {
     state.slides.push({ id: uid(), text: "" });
     saveState();
     rebuildAll();
@@ -282,6 +282,105 @@
     });
   };
 
+  // --- Mobile swipe carousel (syncs editor + preview) ---
+  const mobileMedia = window.matchMedia("(max-width: 900px)");
+  let currentSlideIndex = 0;
+  let syncing = false;
+  let carousel = null;
+
+  const initMobileCarousel = () => {
+    const slidesEl = document.getElementById("slides");
+    const previewsEl = document.getElementById("previews");
+    const dotsEl = document.querySelector(".slide-dots");
+    const counterEl = document.querySelector(".slide-counter");
+
+    const slideWidthOf = (el) => {
+      const child = el.firstElementChild;
+      if (!child) return 1;
+      const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
+      return child.offsetWidth + gap;
+    };
+
+    const indexOf = (el) => {
+      const max = Math.max(0, el.children.length - 1);
+      return Math.min(max, Math.max(0, Math.round(el.scrollLeft / slideWidthOf(el))));
+    };
+
+    const scrollToIndex = (el, idx, smooth = true) => {
+      if (!el.children[idx]) return;
+      el.scrollTo({ left: idx * slideWidthOf(el), behavior: smooth ? "smooth" : "auto" });
+    };
+
+    const updateIndicator = (idx) => {
+      currentSlideIndex = Math.min(idx, state.slides.length - 1);
+      if (counterEl) counterEl.textContent = `${currentSlideIndex + 1} / ${state.slides.length}`;
+      dotsEl?.querySelectorAll(".slide-dot").forEach((d, i) => {
+        d.classList.toggle("active", i === currentSlideIndex);
+      });
+    };
+
+    const rebuildDots = () => {
+      if (!dotsEl) return;
+      dotsEl.innerHTML = "";
+      state.slides.forEach((_, i) => {
+        const dot = document.createElement("button");
+        dot.className = "slide-dot" + (i === currentSlideIndex ? " active" : "");
+        dot.setAttribute("aria-label", `Go to slide ${i + 1}`);
+        dot.addEventListener("click", () => {
+          scrollToIndex(slidesEl, i);
+          scrollToIndex(previewsEl, i);
+          updateIndicator(i);
+        });
+        dotsEl.appendChild(dot);
+      });
+      updateIndicator(currentSlideIndex);
+    };
+
+    const handleScroll = (source) => {
+      if (!mobileMedia.matches || syncing) return;
+      const idx = indexOf(source);
+      if (idx === currentSlideIndex) return;
+      syncing = true;
+      const target = source === slidesEl ? previewsEl : slidesEl;
+      scrollToIndex(target, idx);
+      updateIndicator(idx);
+      setTimeout(() => { syncing = false; }, 120);
+    };
+
+    slidesEl.addEventListener("scroll", () => handleScroll(slidesEl), { passive: true });
+    previewsEl.addEventListener("scroll", () => handleScroll(previewsEl), { passive: true });
+
+    return {
+      rebuildDots,
+      snapToIndex: (idx) => {
+        if (!mobileMedia.matches) return;
+        scrollToIndex(slidesEl, idx, false);
+        scrollToIndex(previewsEl, idx, false);
+        updateIndicator(idx);
+      },
+    };
+  };
+
+  // Wrap rebuildAll so it also rebuilds carousel dots + keeps scroll position
+  const _origRebuildAll = rebuildAll;
+  rebuildAll = () => {
+    _origRebuildAll();
+    if (carousel) {
+      carousel.rebuildDots();
+      // After DOM rebuild, re-snap to the current slide so we don't jump to 0
+      requestAnimationFrame(() => carousel.snapToIndex(currentSlideIndex));
+    }
+  };
+
+  // Scroll to the newest slide after adding one
+  const _origAddSlide = addSlide;
+  addSlide = () => {
+    _origAddSlide();
+    const last = state.slides.length - 1;
+    currentSlideIndex = last;
+    requestAnimationFrame(() => carousel?.snapToIndex(last));
+  };
+
   // --- Init ---
   const init = async () => {
     loadState();
@@ -305,6 +404,7 @@
 
     bindAdvanced();
     updateAdvancedDefaults();
+    carousel = initMobileCarousel();
     rebuildAll();
   };
 
