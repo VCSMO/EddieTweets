@@ -372,12 +372,35 @@
       if (swipe && idx !== 0) swipe.style.display = "none";
       const textEl = node.querySelector(".hook-text");
       if (textEl) textEl.style.fontSize = `${state.overrides.hook_font_size}px`;
+      // Same precomputation trick for HOOK's top edge-fade height.
+      const edgeFade = node.querySelector(".media-edge-fade");
+      if (edgeFade) {
+        edgeFade.style.height = `${Number(state.overrides.edge_fade ?? 30)}%`;
+      }
     } else if (slide.type === "top" || slide.type === "bottom") {
       node.querySelector(".body-text").innerHTML = parsed;
       node.querySelector(".body-text").style.fontSize = `${state.overrides.body_font_size}px`;
-      // Divider Y drives text region, image region, fade, and divider position.
-      // All handled in CSS via --divider-y. Here we just set the variable.
       node.style.setProperty("--divider-y", `${state.overrides.divider_y}%`);
+
+      // html2canvas can't evaluate CSS calc() with var() reliably and produces
+      // NaN color stops on export — so we compute the gradient stops in JS and
+      // set the background inline. Same for the edge-fade height.
+      const dy = Number(state.overrides.divider_y ?? 50);
+      const clamp = (n) => Math.max(0, Math.min(100, n));
+      const fullFade = node.querySelector(".full-fade");
+      if (fullFade) {
+        if (slide.type === "top") {
+          fullFade.style.background =
+            `linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) ${clamp(dy - 8)}%, rgba(0,0,0,0) ${clamp(dy + 4)}%, rgba(0,0,0,0) 100%)`;
+        } else {
+          fullFade.style.background =
+            `linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) ${clamp(100 - dy - 8)}%, rgba(0,0,0,0) ${clamp(100 - dy + 4)}%, rgba(0,0,0,0) 100%)`;
+        }
+      }
+      const edgeFade = node.querySelector(".media-edge-fade");
+      if (edgeFade) {
+        edgeFade.style.height = `${Number(state.overrides.edge_fade ?? 30)}%`;
+      }
     } else if (slide.type === "lesson") {
       node.querySelector(".lesson-body").innerHTML = parsed;
       node.querySelector(".lesson-title").style.fontSize = `${state.overrides.lesson_title_size}px`;
