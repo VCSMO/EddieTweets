@@ -1,6 +1,5 @@
 """Reusable tweet rendering module. Can produce PNGs at any aspect ratio."""
 from PIL import Image, ImageDraw, ImageFont
-import cairosvg
 import io
 import os
 import subprocess
@@ -94,6 +93,7 @@ def make_circle_pfp(path, size, zoom=1.18):
 
 
 def render_verified_badge(size=24):
+    import cairosvg  # lazy: libcairo may not be installed in dev envs that only need bad_carousel
     svg_str = BADGE_SVG.format(size=size * 4)
     png_data = cairosvg.svg2png(bytestring=svg_str.encode(), output_width=size * 4, output_height=size * 4)
     badge = Image.open(io.BytesIO(png_data)).convert("RGBA")

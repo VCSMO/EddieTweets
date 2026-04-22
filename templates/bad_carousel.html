@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BAD Carousel Builder</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/bad_carousel.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-dot"></div>
+    <h1>BAD Carousel Builder</h1>
+  </div>
+  <div class="actions">
+    <div class="session-menu">
+      <button id="sessionBtn" class="btn">Sessions ▾</button>
+      <div id="sessionDropdown" class="session-dropdown" hidden>
+        <div class="session-actions">
+          <button id="newSession" class="btn btn-ghost">+ New Carousel</button>
+          <button id="saveSessionBtn" class="btn btn-ghost">💾 Save as...</button>
+        </div>
+        <div class="session-divider"></div>
+        <div class="session-list-header">Saved</div>
+        <div id="sessionList" class="session-list"></div>
+      </div>
+    </div>
+    <button id="downloadAll" class="btn btn-primary">Download All (ZIP)</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <section class="editor-panel">
+    <div class="panel-header">
+      <h2>Slides</h2>
+      <div class="panel-header-actions">
+        <label class="btn btn-ghost" title="Upload a .txt script with HOOK SLIDE / TEXT ON TOP / TEXT ON BOTTOM / THE LESSON / [AFTER EFFECTS — VIDEO] labels">
+          <input type="file" id="scriptUpload" accept=".txt" hidden>
+          Upload Script
+        </label>
+        <button id="addSlide" class="btn btn-ghost">+ Add Slide</button>
+        <button id="addCta" class="btn btn-ghost">+ Add CTA</button>
+      </div>
+    </div>
+    <div id="slides" class="slides-list"></div>
+
+    <details class="advanced">
+      <summary>Advanced Settings</summary>
+      <div class="advanced-grid">
+        <label>Divider Y % <input type="number" id="divider_y" value="50" step="1" min="10" max="90"></label>
+        <label>Hook Font Size <input type="number" id="hook_font_size" value="111" step="1"></label>
+        <label>Body Font Size <input type="number" id="body_font_size" value="75" step="1"></label>
+        <label>Lesson Title Size <input type="number" id="lesson_title_size" value="150" step="1"></label>
+        <label>Media Edge Fade % <input type="number" id="edge_fade" value="30" step="1" min="0" max="80"></label>
+      </div>
+    </details>
+  </section>
+
+  <section class="preview-panel">
+    <div class="panel-header">
+      <h2>Preview</h2>
+      <span class="format-label">1080 × 1440</span>
+    </div>
+    <div id="previews" class="previews"></div>
+  </section>
+
+  <div id="slideIndicator" class="slide-indicator" aria-hidden="true">
+    <div class="slide-dots"></div>
+    <span class="slide-counter">1 / 1</span>
+  </div>
+
+</main>
+
+<!-- Slide editor card template -->
+<template id="slideTemplate">
+  <div class="slide-card" data-slide-id="">
+    <div class="slide-card-header">
+      <span class="slide-num"></span>
+      <select class="slide-type">
+        <option value="hook">HOOK</option>
+        <option value="top">TEXT ON TOP</option>
+        <option value="bottom">TEXT ON BOTTOM</option>
+        <option value="lesson">THE LESSON</option>
+        <option value="video">VIDEO</option>
+        <option value="cta">CTA</option>
+      </select>
+      <div class="slide-tools">
+        <button class="icon-btn move-up" title="Move up">↑</button>
+        <button class="icon-btn move-down" title="Move down">↓</button>
+        <button class="icon-btn duplicate" title="Duplicate">⎘</button>
+        <button class="icon-btn delete" title="Delete">✕</button>
+      </div>
+    </div>
+    <textarea class="slide-text" placeholder="Copy here. Wrap emphasis in *asterisks* for red italic." rows="5"></textarea>
+    <div class="media-upload" hidden>
+      <label class="media-upload-btn">
+        <input type="file" class="media-input" accept="image/*,video/*">
+        <span class="media-label">Upload image or video</span>
+      </label>
+      <button class="icon-btn media-clear" title="Clear" hidden>✕</button>
+    </div>
+    <div class="cta-variant-row" hidden>
+      <label class="cta-variant-label">CTA style</label>
+      <select class="cta-variant">
+        <option value="1">Style 1</option>
+        <option value="2">Style 2</option>
+        <option value="3">Style 3</option>
+      </select>
+    </div>
+  </div>
+</template>
+
+<!-- Preview card template -->
+<template id="previewTemplate">
+  <div class="preview-card" data-slide-id="">
+    <div class="preview-header">
+      <span class="preview-num"></span>
+      <button class="btn btn-ghost download-one">Download</button>
+    </div>
+    <div class="preview-frame">
+      <div class="preview-scaler"></div>
+    </div>
+  </div>
+</template>
+
+<!-- Slide render templates (the actual 1080x1440 layouts) -->
+<template id="renderHook">
+  <div class="slide-render hook">
+    <div class="media-bg"></div>
+    <div class="media-edge-fade hook-top-fade"></div>
+    <div class="bg-overlay"></div>
+    <div class="hook-inner">
+      <img class="hook-bline" src="/static/bad_carousel/b-line.png" alt="">
+      <div class="hook-text"></div>
+    </div>
+    <div class="hook-swipe">Swipe for more &gt;&gt;&gt;</div>
+  </div>
+</template>
+
+<template id="renderTop">
+  <div class="slide-render top">
+    <div class="image-region">
+      <div class="media-bg"></div>
+      <div class="media-edge-fade"></div>
+    </div>
+    <div class="full-fade"></div>
+    <div class="text-leak"></div>
+    <img class="divider-line" src="/static/bad_carousel/divider.png" alt="">
+    <div class="text-region">
+      <div class="body-text"></div>
+    </div>
+  </div>
+</template>
+
+<template id="renderBottom">
+  <div class="slide-render bottom">
+    <div class="image-region">
+      <div class="media-bg"></div>
+      <div class="media-edge-fade"></div>
+    </div>
+    <div class="full-fade"></div>
+    <div class="text-leak"></div>
+    <img class="divider-line" src="/static/bad_carousel/divider.png" alt="">
+    <div class="text-region">
+      <div class="body-text"></div>
+    </div>
+  </div>
+</template>
+
+<template id="renderLesson">
+  <div class="slide-render lesson">
+    <div class="lesson-title">THE LESSON?</div>
+    <div class="lesson-media"></div>
+    <div class="body-text lesson-body"></div>
+  </div>
+</template>
+
+<template id="renderVideo">
+  <div class="slide-render video">
+    <div class="video-slot"></div>
+  </div>
+</template>
+
+<template id="renderCta">
+  <div class="slide-render cta">
+    <div class="cta-bg"></div>
+  </div>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="/static/ffmpeg/ffmpeg.js"></script>
+<script src="/static/ffmpeg/util.js"></script>
+<script src="/static/bad_carousel.js"></script>
+</body>
+</html>

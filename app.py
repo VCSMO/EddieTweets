@@ -1,5 +1,5 @@
 """Flask app for generating tweet carousel slides."""
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from tweet_render import render_tweet, FORMATS, png_bytes_to_mp4_bytes
 import io
 import zipfile
@@ -12,6 +12,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/bad-carousel")
+def bad_carousel():
+    return render_template("bad_carousel.html")
+
+
+@app.route("/fonts/<path:filename>")
+def serve_fonts(filename):
+    return send_from_directory(os.path.join(BASE_DIR, "fonts"), filename)
 
 
 @app.route("/render", methods=["POST"])

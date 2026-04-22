@@ -1,0 +1,714 @@
+/* ==== Custom font — non-condensed TT Bluescreens Trial ====
+   Available weights: Regular (400), Bold (700), Black (900) + italics.
+   Weight 500 (medium) falls back to Bold; 800 (extrabold) uses Black. */
+@font-face {
+  font-family: 'TTBS';
+  src: url('/fonts/TT%20Bluescreens%20Trial%20Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'TTBS';
+  src: url('/fonts/TTBluescreens-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'TTBS';
+  src: url('/fonts/TT%20Bluescreens%20Trial%20Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'TTBS';
+  src: url('/fonts/TT%20Bluescreens%20Trial%20Bold%20Italic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: block;
+}
+@font-face {
+  font-family: 'TTBS';
+  src: url('/fonts/TT%20Bluescreens%20Trial%20Black.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'TTBS';
+  src: url('/fonts/TT%20Bluescreens%20Trial%20ExtraBold%20Italic.ttf') format('truetype');
+  font-weight: 800;
+  font-style: italic;
+  font-display: block;
+}
+
+/* ==== Session menu (top bar dropdown) ==== */
+.session-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.session-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 280px;
+  max-width: 340px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+.session-dropdown[hidden] {
+  display: none;
+}
+
+.session-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-actions .btn {
+  text-align: left;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.session-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
+.session-list-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  padding: 4px 8px;
+}
+
+.session-list {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.session-item:hover {
+  background: var(--bg-card);
+}
+
+.session-load {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+}
+
+.session-load:hover {
+  color: var(--accent);
+}
+
+.session-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.session-empty {
+  padding: 12px 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-align: center;
+}
+
+.session-delete {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-right: 4px;
+}
+
+.session-delete:hover {
+  color: var(--danger);
+  background: rgba(244, 33, 46, 0.1);
+}
+
+/* ==== Panel header: multiple actions side by side ==== */
+.panel-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ==== Slide type select ==== */
+.slide-card-header {
+  gap: 8px;
+}
+
+.slide-type {
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.slide-type:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ==== Media upload ==== */
+.media-upload {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.media-upload[hidden] {
+  display: none;
+}
+
+.media-upload-btn {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-input);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.media-upload-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.media-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+
+.media-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* ==== Preview grid: bigger cards so the text reads at the true rendered size ==== */
+.previews {
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)) !important;
+  /* Prevent grid from stretching cards to row height; let them size to
+     their aspect-ratio frame instead. */
+  align-items: start;
+  grid-auto-rows: min-content;
+}
+
+/* ==== Preview scaling ==== */
+/* Override the flex centering inherited from style.css */
+.preview-frame {
+  display: block !important;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 1080 / 1440;
+  width: 100%;
+  /* Don't let a flex parent squash the frame below its aspect-ratio height */
+  flex-shrink: 0;
+}
+
+.preview-scaler {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1080px;
+  height: 1440px;
+  transform-origin: top left;
+}
+
+.preview-scaler .slide-render {
+  width: 1080px;
+  height: 1440px;
+}
+
+/* ==== SLIDE RENDER — shared ==== */
+.slide-render {
+  position: relative;
+  width: 1080px;
+  height: 1440px;
+  background: #000;
+  overflow: hidden;
+  /* Emoji fallbacks: Apple Color Emoji renders the iOS-style emoji on macOS/iOS;
+     Segoe UI Emoji is the Windows fallback; Noto Color Emoji on Linux/Android. */
+  font-family: 'TTBS', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  color: #F4F4F4;
+  -webkit-font-smoothing: antialiased;
+}
+
+.slide-render .emphasis {
+  color: #FF1E1E;
+  font-weight: 800;
+  font-style: italic;
+}
+
+/* TEXT ON TOP / BOTTOM / LESSON body use lighter weights:
+   white = medium (500), red emphasis = bold italic (700 italic). */
+.slide-render.top .body-text,
+.slide-render.bottom .body-text,
+.slide-render.lesson .body-text {
+  font-weight: 500;
+}
+.slide-render.top .body-text .emphasis,
+.slide-render.bottom .body-text .emphasis,
+.slide-render.lesson .body-text .emphasis {
+  font-weight: 700;
+}
+
+/* Optional uploaded-media background (hook, top, bottom) */
+.media-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* Gradient that fades the image's far edge (the one away from the text) into
+   black — smooths out hard cuts when you drag the image up/down. Intensity
+   is --edge-fade (0-100, set on the slide). 0 = no fade. */
+.media-edge-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+/* TOP: image at bottom half → fade at slide bottom */
+.slide-render.top .media-edge-fade {
+  bottom: 0;
+  top: auto;
+  height: calc(var(--edge-fade, 30) * 1%);
+  background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,1));
+}
+/* BOTTOM: image at top half → fade at slide top */
+.slide-render.bottom .media-edge-fade {
+  top: 0;
+  bottom: auto;
+  height: calc(var(--edge-fade, 30) * 1%);
+  background: linear-gradient(to top, rgba(0,0,0,0), rgba(0,0,0,1));
+}
+/* HOOK: image is full-slide, its "far" edge from the bottom text is the top */
+.hook-top-fade {
+  top: 0;
+  bottom: auto;
+  height: calc(var(--edge-fade, 30) * 1%);
+  background: linear-gradient(to top, rgba(0,0,0,0), rgba(0,0,0,1));
+  z-index: 1;
+}
+/* Hide the edge-fade when there's no uploaded media — the slide-bg is already
+   black so the gradient would be invisible, and we want it to disappear on
+   TOP/BOTTOM when the image region is empty. */
+.slide-render:not(.has-media-bg) .media-edge-fade { display: none; }
+
+/* Inner wrapper sized explicitly by JS to (natural × cover-scale × user-scale).
+   Positioned at container center via top/left 50% + translate(-50%). */
+.media-inner {
+  position: absolute;
+  transform-origin: center center;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* Videos fill the inner wrapper (which already carries the correct aspect). */
+.media-inner > video {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+}
+
+.bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1;
+  display: none;
+  pointer-events: none;
+}
+.slide-render.has-media-bg .bg-overlay {
+  display: block;
+}
+
+/* Drag cursors for positionable media */
+.preview-scaler .media-bg,
+.preview-scaler .lesson-media,
+.preview-scaler .video-slot {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+body.dragging-media,
+body.dragging-media * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* HOOK always has a bottom-fade-to-black gradient, regardless of media.
+   On solid-black slides it's invisible; over a photo it darkens the bottom
+   so the B-line + text + swipe stay legible. */
+.slide-render.hook .bg-overlay {
+  display: block;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0) 35%,
+    rgba(0, 0, 0, 0.75) 65%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+/* Keep foreground elements above background media */
+.hook-inner, .hook-swipe,
+.top-inner, .bottom-inner,
+.bokeh {
+  z-index: 2;
+}
+.slide-render.has-media-bg .bokeh {
+  display: none;
+}
+
+/* ==== HOOK ==== */
+.slide-render.hook {
+  background: #000;
+}
+
+.hook-inner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 180px;
+  padding: 0 70px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.hook-bline {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.hook-text {
+  font-weight: 700;
+  font-size: 96px;
+  line-height: 1.0;
+  letter-spacing: -0.5px;
+}
+
+.hook-swipe {
+  position: absolute;
+  right: 70px;
+  bottom: 70px;
+  /* TT Bluescreens Trial Regular at 16.19pt → ~69px */
+  font-weight: 400;
+  font-size: 69px;
+  color: #F4F4F4;
+  letter-spacing: 0.5px;
+}
+
+/* ==== BODY TEXT (shared by TOP, BOTTOM, LESSON) ==== */
+.body-text {
+  font-weight: 700;
+  font-size: 56px;
+  line-height: 1.08;
+  letter-spacing: -0.3px;
+}
+
+.body-text .para {
+  margin-bottom: 60px;
+}
+
+.body-text .para:last-child {
+  margin-bottom: 0;
+}
+
+/* ==== TOP / BOTTOM ==== */
+.slide-render.top,
+.slide-render.bottom {
+  background: #000;
+  --divider-y: 50%;
+}
+
+/* Layer 0: uploaded image/video, clipped to the half opposite the text.
+   When nothing is uploaded, the region is just black (via slide bg). */
+.image-region {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+.slide-render.top .image-region {
+  top: var(--divider-y);
+  bottom: 0;
+}
+.slide-render.bottom .image-region {
+  top: 0;
+  bottom: calc(100% - var(--divider-y));
+}
+
+.image-region .media-bg {
+  position: absolute;
+  inset: 0;
+}
+
+/* Layer 1: a full-canvas black gradient that's solid in the text half and
+   fades to transparent in the image half. When no image is uploaded the
+   whole slide just reads as black. */
+.full-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.slide-render.top .full-fade {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) calc(var(--divider-y) - 8%),
+    rgba(0, 0, 0, 0) calc(var(--divider-y) + 4%),
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+.slide-render.bottom .full-fade {
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) calc(100% - var(--divider-y) - 8%),
+    rgba(0, 0, 0, 0) calc(100% - var(--divider-y) + 4%),
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+/* Layer 2: bokeh leak behind the text region.
+   - TOP: natural orientation (hotspot at top-right)
+   - BOTTOM: flipped vertically (hotspot at bottom-right) */
+.text-leak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background-image: url("/static/bad_carousel/bokeh.png");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.3;
+  z-index: 2;
+  pointer-events: none;
+}
+.slide-render.top .text-leak {
+  top: 0;
+  bottom: calc(100% - var(--divider-y));
+}
+.slide-render.bottom .text-leak {
+  top: var(--divider-y);
+  bottom: 0;
+  transform: scaleY(-1);
+}
+
+/* Layer 3: red divider line, centered on divider_y.
+   scaleX 1.12 pushes the faded ends beyond the canvas so they get clipped
+   by .slide-render's overflow: hidden — no visible hard edge. */
+.divider-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: auto;
+  top: var(--divider-y);
+  transform: translateY(-50%) scale(1.12);
+  z-index: 3;
+  display: block;
+}
+
+/* Layer 4: the text */
+.text-region {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 80px 70px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+}
+.slide-render.top .text-region {
+  top: 0;
+  bottom: auto;
+  height: var(--divider-y);
+  justify-content: center;
+}
+.slide-render.bottom .text-region {
+  top: var(--divider-y);
+  bottom: 0;
+  height: auto;
+  justify-content: center;
+}
+
+/* ==== LESSON ==== */
+.slide-render.lesson {
+  background: #000;
+  padding: 60px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.lesson-title {
+  color: #FF1E1E;
+  font-weight: 800;
+  font-style: italic;
+  font-size: 150px;
+  line-height: 1.0;
+  letter-spacing: -1px;
+  text-align: left;
+}
+
+.lesson-media {
+  flex: 1;
+  background: #111;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  font-size: 24px;
+  min-height: 400px;
+}
+
+
+.lesson-media:not(.has-media)::before {
+  content: "Upload an image or video";
+  color: #444;
+}
+
+/* ==== CTA ==== */
+.slide-render.cta {
+  background: #000;
+}
+.cta-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* CTA variant selector in the slide editor */
+.cta-variant-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cta-variant-row[hidden] { display: none; }
+.cta-variant-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cta-variant {
+  flex: 1;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.cta-variant:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ==== VIDEO (full slide) ==== */
+.slide-render.video {
+  background: #000;
+}
+
+.video-slot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  font-size: 32px;
+}
+
+
+.video-slot:not(.has-media)::before {
+  content: "Upload video";
+}
