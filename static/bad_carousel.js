@@ -702,7 +702,9 @@
     }
   };
 
-  // Measure where the video slot sits within the 1080×1440 slide.
+  // Measure where the video's container (media-bg / lesson-media / video-slot)
+  // sits within the 1080×1440 slide. Returning the CONTAINER rect (not the
+  // video element's rect) is what the ffmpeg cover-fit math expects.
   const measureVideoBox = (slide, idx) => {
     const scratch = document.createElement("div");
     scratch.style.position = "fixed";
@@ -716,19 +718,15 @@
     try {
       const videoEl = render.querySelector("video");
       if (!videoEl) return null;
-      // mountMedia only creates the .media-inner wrapper — sizing happens in
-      // applyMediaLayout which is called from updatePreview's rAF. The export
-      // path skips that rAF so we have to apply layout here explicitly,
-      // otherwise the video's bounding box is 0×0.
       const mediaEl = videoEl.closest(".media-bg, .lesson-media, .video-slot");
-      if (mediaEl) applyMediaLayout(mediaEl, slide);
+      if (!mediaEl) return null;
       const slideRect = render.getBoundingClientRect();
-      const videoRect = videoEl.getBoundingClientRect();
+      const mediaRect = mediaEl.getBoundingClientRect();
       return {
-        x: Math.round(videoRect.left - slideRect.left),
-        y: Math.round(videoRect.top - slideRect.top),
-        w: Math.round(videoRect.width),
-        h: Math.round(videoRect.height),
+        x: Math.round(mediaRect.left - slideRect.left),
+        y: Math.round(mediaRect.top - slideRect.top),
+        w: Math.round(mediaRect.width),
+        h: Math.round(mediaRect.height),
       };
     } finally {
       scratch.remove();
@@ -864,6 +862,12 @@
     const render = buildRender(slide, idx);
     scratch.appendChild(render);
     document.body.appendChild(scratch);
+
+    // Size the uploaded media — mountMedia only creates the .media-inner
+    // wrapper; applyMediaLayout sets the pixel dimensions. Without this call
+    // the wrapper is 0×0 and the background-image never shows in the export.
+    render.querySelectorAll(".media-bg, .lesson-media, .video-slot")
+      .forEach(el => applyMediaLayout(el, slide));
 
     // Wait a tick for images/fonts to load
     await document.fonts.ready;
