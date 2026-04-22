@@ -716,6 +716,12 @@
     try {
       const videoEl = render.querySelector("video");
       if (!videoEl) return null;
+      // mountMedia only creates the .media-inner wrapper — sizing happens in
+      // applyMediaLayout which is called from updatePreview's rAF. The export
+      // path skips that rAF so we have to apply layout here explicitly,
+      // otherwise the video's bounding box is 0×0.
+      const mediaEl = videoEl.closest(".media-bg, .lesson-media, .video-slot");
+      if (mediaEl) applyMediaLayout(mediaEl, slide);
       const slideRect = render.getBoundingClientRect();
       const videoRect = videoEl.getBoundingClientRect();
       return {
@@ -732,6 +738,13 @@
   const renderSlideAsVideo = async (slide, idx) => {
     const file = slide.media.file;
     const { vw, vh, duration } = await probeVideoFile(file);
+
+    // Make sure the slide has the video's intrinsic dimensions before we
+    // measure the layout — applyMediaLayout needs them to compute cover-scale.
+    if (!slide.mediaNaturalW || !slide.mediaNaturalH) {
+      slide.mediaNaturalW = vw;
+      slide.mediaNaturalH = vh;
+    }
 
     // Measure where the video sits inside the 1080×1440 slide so we can
     // compute the correct crop + placement.
