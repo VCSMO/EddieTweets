@@ -12,7 +12,8 @@ VIDEO_HEIGHT = 1920
 
 
 def png_bytes_to_mp4_bytes(png_bytes, duration=VIDEO_DURATION_SEC,
-                           width=VIDEO_WIDTH, height=VIDEO_HEIGHT):
+                           width=VIDEO_WIDTH, height=VIDEO_HEIGHT,
+                           pad_color="black"):
     """Loop a static PNG into a silent MP4 of the given duration.
 
     Uses ffmpeg. Output is H.264, yuv420p, no audio track. Pads/letterboxes
@@ -26,7 +27,7 @@ def png_bytes_to_mp4_bytes(png_bytes, duration=VIDEO_DURATION_SEC,
 
         vf = (
             f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
-            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color={pad_color},"
             "setsar=1,format=yuv420p"
         )
         cmd = [
@@ -59,9 +60,26 @@ DEFAULT_PFP_PATH = os.path.join(BASE_DIR, "eddie-pfp.jpg")
 DEFAULT_DISPLAY_NAME = "Eddie Maalouf"
 DEFAULT_HANDLE = "@imakeBADads"
 
-TEXT_COLOR = (231, 233, 234)
-HANDLE_COLOR = (113, 118, 123)
-BG_COLOR = (0, 0, 0)
+# Theme palettes matching Twitter/X colors
+THEMES = {
+    "dark": {
+        "bg": (0, 0, 0),
+        "text": (231, 233, 234),
+        "handle": (113, 118, 123),
+        "border": (80, 80, 80),
+    },
+    "light": {
+        "bg": (255, 255, 255),
+        "text": (15, 20, 25),
+        "handle": (83, 100, 113),
+        "border": (207, 217, 222),
+    },
+}
+
+# Backwards compatibility
+TEXT_COLOR = THEMES["dark"]["text"]
+HANDLE_COLOR = THEMES["dark"]["handle"]
+BG_COLOR = THEMES["dark"]["bg"]
 
 # Fonts (Twitter Chirp)
 FONT_DIR = os.path.join(BASE_DIR, "fonts")
@@ -155,11 +173,17 @@ def render_tweet(
     line_gap=18,
     para_gap=36,
     badge_scale=0.95,
+    theme="dark",
 ):
     """Render a tweet to a PIL Image at the given dimensions."""
     pfp_path = pfp_path or DEFAULT_PFP_PATH
+    palette = THEMES.get(theme, THEMES["dark"])
+    bg_color = palette["bg"]
+    text_color = palette["text"]
+    handle_color = palette["handle"]
+    border_color = palette["border"]
 
-    img = Image.new("RGB", (width, height), BG_COLOR)
+    img = Image.new("RGB", (width, height), bg_color)
     draw = ImageDraw.Draw(img)
 
     font_name = ImageFont.truetype(FONT_HEAVY, font_name_size)
@@ -187,7 +211,6 @@ def render_tweet(
     pfp_y = start_y + (header_h - pfp_size) // 2
     # Border ring
     border = 3
-    border_color = (80, 80, 80)
     draw.ellipse(
         (x_padding - border, pfp_y - border,
          x_padding + pfp_size + border, pfp_y + pfp_size + border),
@@ -202,7 +225,7 @@ def render_tweet(
     name_y = text_block_start_y - name_bbox[1]  # Correct for font baseline
 
     # Name
-    draw.text((name_x, name_y), display_name, fill=TEXT_COLOR, font=font_name)
+    draw.text((name_x, name_y), display_name, fill=text_color, font=font_name)
     name_w = name_bbox[2] - name_bbox[0]
 
     # Verified badge
@@ -215,13 +238,13 @@ def render_tweet(
 
     # Handle
     handle_y = text_block_start_y + name_h + handle_gap - handle_bbox[1]
-    draw.text((name_x, handle_y), handle, fill=HANDLE_COLOR, font=font_handle)
+    draw.text((name_x, handle_y), handle, fill=handle_color, font=font_handle)
 
     # --- Tweet Text ---
     text_y = start_y + header_h + header_gap
     for pi, lines in enumerate(para_lines):
         for li, line in enumerate(lines):
-            draw.text((x_padding, text_y), line, fill=TEXT_COLOR, font=font_tweet)
+            draw.text((x_padding, text_y), line, fill=text_color, font=font_tweet)
             bbox = font_tweet.getbbox(line)
             text_y += (bbox[3] - bbox[1]) + line_gap
         if pi < len(para_lines) - 1:

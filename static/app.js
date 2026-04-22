@@ -1,6 +1,7 @@
 (() => {
   const state = {
     format: "carousel",
+    theme: "dark",
     slides: [],
     overrides: {},
     presets: null,
@@ -15,6 +16,7 @@
       if (saved) {
         const obj = JSON.parse(saved);
         state.format = obj.format || "carousel";
+        state.theme = obj.theme === "light" ? "light" : "dark";
         state.slides = obj.slides || [];
         state.overrides = obj.overrides || {};
       }
@@ -28,6 +30,7 @@
     try {
       localStorage.setItem("tcb_state", JSON.stringify({
         format: state.format,
+        theme: state.theme,
         slides: state.slides,
         overrides: state.overrides,
       }));
@@ -63,6 +66,7 @@
         body: JSON.stringify({
           text: slide.text,
           format: state.format,
+          theme: state.theme,
           overrides: state.overrides,
         }),
       });
@@ -181,6 +185,7 @@
       body: JSON.stringify({
         text: slide.text,
         format: state.format,
+        theme: state.theme,
         overrides: state.overrides,
       }),
     });
@@ -205,6 +210,7 @@
         body: JSON.stringify({
           slides: state.slides.map(s => s.text),
           format: state.format,
+          theme: state.theme,
           overrides: state.overrides,
         }),
       });
@@ -230,6 +236,18 @@
     updateAdvancedDefaults();
     saveState();
     updateFormatLabel();
+    renderAll();
+  };
+
+  // --- Theme toggle (for the rendered tweet, not the UI) ---
+  const setTheme = (theme) => {
+    if (theme !== "light" && theme !== "dark") return;
+    if (state.theme === theme) return;
+    state.theme = theme;
+    document.querySelectorAll(".theme-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.theme === theme);
+    });
+    saveState();
     renderAll();
   };
 
@@ -432,6 +450,12 @@
     document.querySelectorAll(".fmt-btn").forEach(b => {
       b.classList.toggle("active", b.dataset.fmt === state.format);
       b.addEventListener("click", () => setFormat(b.dataset.fmt));
+    });
+
+    // Theme toggle (for rendered tweet)
+    document.querySelectorAll(".theme-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.theme === state.theme);
+      b.addEventListener("click", () => setTheme(b.dataset.theme));
     });
 
     document.getElementById("addSlide").addEventListener("click", addSlide);

@@ -24,16 +24,26 @@ def serve_fonts(filename):
     return send_from_directory(os.path.join(BASE_DIR, "fonts"), filename)
 
 
+def _build_config(data, default_fmt):
+    """Merge format preset + overrides + theme into a single kwargs dict."""
+    fmt = data.get("format", default_fmt)
+    overrides = data.get("overrides", {}) or {}
+    theme = data.get("theme", "dark")
+    if theme not in ("light", "dark"):
+        theme = "dark"
+
+    cfg = FORMATS.get(fmt, FORMATS[default_fmt]).copy()
+    cfg.update({k: v for k, v in overrides.items() if v is not None})
+    cfg["theme"] = theme
+    return cfg, theme, fmt
+
+
 @app.route("/render", methods=["POST"])
 def render_single():
     """Render a single slide and return PNG bytes."""
     data = request.get_json()
     text = data.get("text", "")
-    fmt = data.get("format", "carousel")
-    overrides = data.get("overrides", {}) or {}
-
-    cfg = FORMATS.get(fmt, FORMATS["carousel"]).copy()
-    cfg.update({k: v for k, v in overrides.items() if v is not None})
+    cfg, _theme, _fmt = _build_config(data, "carousel")
 
     img = render_tweet(text, **cfg)
 
@@ -48,17 +58,14 @@ def render_video():
     """Render a single slide and return it as a 7s silent MP4 (9:16)."""
     data = request.get_json()
     text = data.get("text", "")
-    fmt = data.get("format", "single")
-    overrides = data.get("overrides", {}) or {}
-
-    cfg = FORMATS.get(fmt, FORMATS["single"]).copy()
-    cfg.update({k: v for k, v in overrides.items() if v is not None})
+    cfg, theme, _fmt = _build_config(data, "single")
 
     img = render_tweet(text, **cfg)
     png_buf = io.BytesIO()
     img.save(png_buf, format="PNG")
 
-    mp4_bytes = png_bytes_to_mp4_bytes(png_buf.getvalue())
+    pad_color = "white" if theme == "light" else "black"
+    mp4_bytes = png_bytes_to_mp4_bytes(png_buf.getvalue(), pad_color=pad_color)
     return send_file(io.BytesIO(mp4_bytes), mimetype="video/mp4")
 
 
@@ -71,13 +78,10 @@ def render_all():
     """
     data = request.get_json()
     slides = data.get("slides", [])
-    fmt = data.get("format", "carousel")
-    overrides = data.get("overrides", {}) or {}
-
-    cfg = FORMATS.get(fmt, FORMATS["carousel"]).copy()
-    cfg.update({k: v for k, v in overrides.items() if v is not None})
+    cfg, theme, fmt = _build_config(data, "carousel")
 
     as_video = fmt == "single"
+    pad_color = "white" if theme == "light" else "black"
 
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -86,7 +90,7 @@ def render_all():
             img_buf = io.BytesIO()
             img.save(img_buf, format="PNG")
             if as_video:
-                mp4_bytes = png_bytes_to_mp4_bytes(img_buf.getvalue())
+                mp4_bytes = png_bytes_to_mp4_bytes(img_buf.getvalue(), pad_color=pad_color)
                 zf.writestr(f"slide_{i+1}.mp4", mp4_bytes)
             else:
                 zf.writestr(f"slide_{i+1}.png", img_buf.getvalue())

@@ -63,6 +63,13 @@ html, body {
   font-weight: 700;
 }
 
+/* --- Topbar controls --- */
+.topbar-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 /* --- Format toggle --- */
 .format-toggle {
   display: flex;
@@ -91,6 +98,49 @@ html, body {
   background: var(--accent);
   color: white;
 }
+
+/* --- Theme toggle (applies to rendered tweet, not the UI) --- */
+.theme-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-card);
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.theme-btn {
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+}
+
+.theme-btn:hover { color: var(--text); }
+
+.theme-btn.active {
+  background: #2a2a2a;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.theme-btn[data-theme="dark"].active { background: #1a1a1a; }
+.theme-btn[data-theme="light"].active {
+  background: #f0f0f0;
+  color: #0f1419;
+}
+
+.theme-icon { font-size: 14px; line-height: 1; }
+.theme-label { font-size: 13px; }
 
 /* --- Buttons --- */
 .btn {
