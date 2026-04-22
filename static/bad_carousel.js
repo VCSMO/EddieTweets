@@ -317,15 +317,34 @@
     const inner = document.createElement("div");
     inner.className = "media-inner";
 
+    // Once the media's intrinsic size is known, re-layout so it sizes correctly
+    // even if the upload-time probe failed or localStorage-restored state had
+    // stale/missing dimensions.
+    const relayoutFromLive = (nw, nh) => {
+      if (!nw || !nh) return;
+      const card = container.closest(".preview-card");
+      const slideId = card?.dataset.slideId;
+      const slide = slideId ? state.slides.find(s => s.id === slideId) : null;
+      if (!slide) return;
+      slide.mediaNaturalW = nw;
+      slide.mediaNaturalH = nh;
+      applyMediaLayout(container, slide);
+    };
+
     if (media.type.startsWith("video/")) {
       const el = Object.assign(document.createElement("video"), {
         src: media.url, muted: true, loop: true, autoplay: true, playsInline: true,
       });
+      el.addEventListener("loadedmetadata", () => relayoutFromLive(el.videoWidth, el.videoHeight));
       inner.appendChild(el);
     } else {
       inner.style.backgroundImage = `url("${media.url}")`;
       inner.style.backgroundSize = "100% 100%";
       inner.style.backgroundRepeat = "no-repeat";
+      // Probe via a separate <img> (background-image has no load event)
+      const probe = new Image();
+      probe.onload = () => relayoutFromLive(probe.naturalWidth, probe.naturalHeight);
+      probe.src = media.url;
     }
 
     container.appendChild(inner);
@@ -943,11 +962,35 @@
   const applyMediaLayout = (mediaEl, slide) => {
     const inner = mediaEl.querySelector(".media-inner");
     if (!inner) return;
-    const nw = slide.mediaNaturalW || 0;
-    const nh = slide.mediaNaturalH || 0;
     const cw = mediaEl.clientWidth;
     const ch = mediaEl.clientHeight;
-    if (!nw || !nh || !cw || !ch) return;
+    if (!cw || !ch) return;
+
+    let nw = slide.mediaNaturalW || 0;
+    let nh = slide.mediaNaturalH || 0;
+
+    // Fallback: if probeMediaSize didn't give us dimensions, read them off
+    // the live DOM element (video.videoWidth / img.naturalWidth).
+    if (!nw || !nh) {
+      const vidEl = inner.querySelector("video");
+      if (vidEl && vidEl.videoWidth) { nw = vidEl.videoWidth; nh = vidEl.videoHeight; }
+    }
+
+    if (!nw || !nh) {
+      // Still no dimensions — cover-fit to container as a safe fallback so
+      // the media doesn't render at natural size in the top-left corner.
+      inner.style.position = "absolute";
+      inner.style.top = "0";
+      inner.style.left = "0";
+      inner.style.width = `${cw}px`;
+      inner.style.height = `${ch}px`;
+      inner.style.transform = "";
+      return;
+    }
+
+    // Cache for future layout calls
+    slide.mediaNaturalW = nw;
+    slide.mediaNaturalH = nh;
 
     const coverScale = Math.max(cw / nw, ch / nh);
     const S = slide.scale ?? 1;
