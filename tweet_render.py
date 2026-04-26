@@ -55,10 +55,25 @@ def png_bytes_to_mp4_bytes(png_bytes, duration=VIDEO_DURATION_SEC,
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Defaults
-DEFAULT_PFP_PATH = os.path.join(BASE_DIR, "eddie-pfp.jpg")
-DEFAULT_DISPLAY_NAME = "Eddie Maalouf"
-DEFAULT_HANDLE = "@imakeBADads"
+# Profiles: map of profile_id -> {display_name, handle, pfp_path}
+PROFILES = {
+    "eddie": {
+        "display_name": "Eddie Maalouf",
+        "handle": "@imakeBADads",
+        "pfp_path": os.path.join(BASE_DIR, "eddie-pfp.jpg"),
+    },
+    "zuheir": {
+        "display_name": "Zuheir Daher",
+        "handle": "@Zuheir.ig",
+        "pfp_path": os.path.join(BASE_DIR, "zuheir-pfp.jpg"),
+    },
+}
+DEFAULT_PROFILE = "eddie"
+
+# Backwards compatibility
+DEFAULT_PFP_PATH = PROFILES[DEFAULT_PROFILE]["pfp_path"]
+DEFAULT_DISPLAY_NAME = PROFILES[DEFAULT_PROFILE]["display_name"]
+DEFAULT_HANDLE = PROFILES[DEFAULT_PROFILE]["handle"]
 
 # Theme palettes matching Twitter/X colors
 THEMES = {
@@ -159,9 +174,10 @@ def render_tweet(
     tweet_text,
     width=1080,
     height=1440,
+    profile=None,
     pfp_path=None,
-    display_name=DEFAULT_DISPLAY_NAME,
-    handle=DEFAULT_HANDLE,
+    display_name=None,
+    handle=None,
     pfp_size=120,
     font_name_size=46,
     font_handle_size=38,
@@ -175,8 +191,19 @@ def render_tweet(
     badge_scale=0.95,
     theme="dark",
 ):
-    """Render a tweet to a PIL Image at the given dimensions."""
-    pfp_path = pfp_path or DEFAULT_PFP_PATH
+    """Render a tweet to a PIL Image at the given dimensions.
+
+    Profile resolution order (per field):
+      1. explicit pfp_path / display_name / handle kwarg (if provided)
+      2. PROFILES[profile] entry (if profile id is given and valid)
+      3. PROFILES[DEFAULT_PROFILE] (Eddie)
+    """
+    profile_data = PROFILES.get(profile) if profile else None
+    if profile_data is None:
+        profile_data = PROFILES[DEFAULT_PROFILE]
+    pfp_path = pfp_path or profile_data["pfp_path"]
+    display_name = display_name if display_name is not None else profile_data["display_name"]
+    handle = handle if handle is not None else profile_data["handle"]
     palette = THEMES.get(theme, THEMES["dark"])
     bg_color = palette["bg"]
     text_color = palette["text"]

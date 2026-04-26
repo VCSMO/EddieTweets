@@ -70,6 +70,105 @@ html, body {
   align-items: center;
 }
 
+/* --- Profile picker --- */
+.profile-picker { position: relative; }
+
+.profile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px 4px 4px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.profile-btn:hover { border-color: var(--border-strong); background: #1a1a1a; }
+
+.profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #222;
+  flex-shrink: 0;
+}
+
+.profile-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+  gap: 2px;
+}
+
+.profile-name { font-weight: 700; font-size: 13px; }
+.profile-handle { color: var(--text-dim); font-size: 11px; }
+
+.profile-caret { color: var(--text-dim); font-size: 10px; margin-left: 2px; }
+
+.profile-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 240px;
+  box-shadow: 0 10px 32px rgba(0,0,0,0.45);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-menu[hidden] { display: none; }
+
+.profile-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.profile-option:hover { background: #242424; }
+.profile-option.active { background: #1f2933; }
+
+.profile-option img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #222;
+}
+
+.profile-option .meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  gap: 2px;
+}
+
+.profile-option .meta strong { font-weight: 700; font-size: 13px; }
+.profile-option .meta span { color: var(--text-dim); font-size: 11px; }
+
 /* --- Format toggle --- */
 .format-toggle {
   display: flex;

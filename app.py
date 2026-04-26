@@ -1,6 +1,6 @@
 """Flask app for generating tweet carousel slides."""
 from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
-from tweet_render import render_tweet, FORMATS, png_bytes_to_mp4_bytes
+from tweet_render import render_tweet, FORMATS, PROFILES, DEFAULT_PROFILE, png_bytes_to_mp4_bytes
 import io
 import zipfile
 import os
@@ -25,16 +25,21 @@ def serve_fonts(filename):
 
 
 def _build_config(data, default_fmt):
-    """Merge format preset + overrides + theme into a single kwargs dict."""
+    """Merge format preset + overrides + theme + profile into a single kwargs dict."""
     fmt = data.get("format", default_fmt)
     overrides = data.get("overrides", {}) or {}
     theme = data.get("theme", "dark")
     if theme not in ("light", "dark"):
         theme = "dark"
 
+    profile = data.get("profile", DEFAULT_PROFILE)
+    if profile not in PROFILES:
+        profile = DEFAULT_PROFILE
+
     cfg = FORMATS.get(fmt, FORMATS[default_fmt]).copy()
     cfg.update({k: v for k, v in overrides.items() if v is not None})
     cfg["theme"] = theme
+    cfg["profile"] = profile
     return cfg, theme, fmt
 
 
@@ -102,6 +107,31 @@ def render_all():
 @app.route("/formats")
 def list_formats():
     return jsonify(FORMATS)
+
+
+@app.route("/profiles")
+def list_profiles():
+    """Return a UI-safe summary of profiles (no filesystem paths)."""
+    return jsonify({
+        "default": DEFAULT_PROFILE,
+        "profiles": {
+            pid: {"display_name": p["display_name"], "handle": p["handle"]}
+            for pid, p in PROFILES.items()
+        },
+    })
+
+
+@app.route("/pfp/<profile_id>")
+def serve_pfp(profile_id):
+    """Serve the PFP for a given profile so the UI can show a thumbnail."""
+    profile = PROFILES.get(profile_id)
+    if not profile:
+        return ("Not found", 404)
+    pfp_path = profile["pfp_path"]
+    return send_from_directory(
+        os.path.dirname(pfp_path),
+        os.path.basename(pfp_path),
+    )
 
 
 if __name__ == "__main__":

@@ -2,9 +2,11 @@
   const state = {
     format: "carousel",
     theme: "dark",
+    profile: "eddie",
     slides: [],
     overrides: {},
     presets: null,
+    profiles: null, // { default, profiles: { id: {display_name, handle} } }
   };
 
   // --- State helpers ---
@@ -17,6 +19,7 @@
         const obj = JSON.parse(saved);
         state.format = obj.format || "carousel";
         state.theme = obj.theme === "light" ? "light" : "dark";
+        state.profile = obj.profile || "eddie";
         state.slides = obj.slides || [];
         state.overrides = obj.overrides || {};
       }
@@ -31,6 +34,7 @@
       localStorage.setItem("tcb_state", JSON.stringify({
         format: state.format,
         theme: state.theme,
+        profile: state.profile,
         slides: state.slides,
         overrides: state.overrides,
       }));
@@ -67,6 +71,7 @@
           text: slide.text,
           format: state.format,
           theme: state.theme,
+          profile: state.profile,
           overrides: state.overrides,
         }),
       });
@@ -211,6 +216,7 @@
           slides: state.slides.map(s => s.text),
           format: state.format,
           theme: state.theme,
+          profile: state.profile,
           overrides: state.overrides,
         }),
       });
@@ -247,6 +253,70 @@
     document.querySelectorAll(".theme-btn").forEach(b => {
       b.classList.toggle("active", b.dataset.theme === theme);
     });
+    saveState();
+    renderAll();
+  };
+
+  // --- Profile picker ---
+  const refreshProfileButton = () => {
+    const profiles = state.profiles?.profiles || {};
+    const cur = profiles[state.profile] || profiles[state.profiles?.default];
+    if (!cur) return;
+    const btn = document.getElementById("profileBtn");
+    if (!btn) return;
+    btn.querySelector(".profile-name").textContent = cur.display_name;
+    btn.querySelector(".profile-handle").textContent = cur.handle;
+    btn.querySelector(".profile-avatar").src = `/pfp/${state.profile}`;
+  };
+
+  const buildProfileMenu = () => {
+    const menu = document.getElementById("profileMenu");
+    if (!menu || !state.profiles) return;
+    menu.innerHTML = "";
+    Object.entries(state.profiles.profiles).forEach(([pid, info]) => {
+      const opt = document.createElement("button");
+      opt.className = "profile-option" + (pid === state.profile ? " active" : "");
+      opt.type = "button";
+      opt.dataset.profile = pid;
+      opt.innerHTML = `
+        <img src="/pfp/${pid}" alt="" />
+        <div class="meta">
+          <strong></strong>
+          <span></span>
+        </div>
+      `;
+      opt.querySelector("strong").textContent = info.display_name;
+      opt.querySelector("span").textContent = info.handle;
+      opt.addEventListener("click", () => {
+        setProfile(pid);
+        closeProfileMenu();
+      });
+      menu.appendChild(opt);
+    });
+  };
+
+  const openProfileMenu = () => {
+    const menu = document.getElementById("profileMenu");
+    const btn = document.getElementById("profileBtn");
+    if (!menu || !btn) return;
+    menu.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  };
+
+  const closeProfileMenu = () => {
+    const menu = document.getElementById("profileMenu");
+    const btn = document.getElementById("profileBtn");
+    if (!menu || !btn) return;
+    menu.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  };
+
+  const setProfile = (pid) => {
+    if (!state.profiles?.profiles[pid]) return;
+    if (state.profile === pid) return;
+    state.profile = pid;
+    refreshProfileButton();
+    buildProfileMenu();
     saveState();
     renderAll();
   };
@@ -438,10 +508,18 @@
   const init = async () => {
     loadState();
 
-    // Load presets from server
+    // Load presets and profiles from server in parallel
     try {
-      const res = await fetch("/formats");
-      state.presets = await res.json();
+      const [fmts, profs] = await Promise.all([
+        fetch("/formats").then(r => r.json()),
+        fetch("/profiles").then(r => r.json()).catch(() => null),
+      ]);
+      state.presets = fmts;
+      state.profiles = profs;
+      // Validate persisted profile choice
+      if (profs && !profs.profiles[state.profile]) {
+        state.profile = profs.default;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -456,6 +534,28 @@
     document.querySelectorAll(".theme-btn").forEach(b => {
       b.classList.toggle("active", b.dataset.theme === state.theme);
       b.addEventListener("click", () => setTheme(b.dataset.theme));
+    });
+
+    // Profile picker
+    refreshProfileButton();
+    buildProfileMenu();
+    const profileBtn = document.getElementById("profileBtn");
+    if (profileBtn) {
+      profileBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById("profileMenu");
+        if (menu.hidden) openProfileMenu();
+        else closeProfileMenu();
+      });
+    }
+    // Close menu when clicking elsewhere
+    document.addEventListener("click", (e) => {
+      const picker = e.target.closest(".profile-picker");
+      if (!picker) closeProfileMenu();
+    });
+    // Close on escape
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeProfileMenu();
     });
 
     document.getElementById("addSlide").addEventListener("click", addSlide);

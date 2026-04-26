@@ -20,6 +20,9 @@ slides/*.png
 slides/*.mp4
 /tmp/
 
+# Source PFPs (we ship the cropped versions only)
+*-pfp-original.*
+
 # Env
 .env
 .env.*
