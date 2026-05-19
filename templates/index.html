@@ -51,7 +51,10 @@
   <section class="editor-panel">
     <div class="panel-header">
       <h2>Slides</h2>
-      <button id="addSlide" class="btn btn-ghost">+ Add Slide</button>
+      <div class="panel-header-actions">
+        <button id="importThread" class="btn btn-ghost" title="Paste a full thread script">📥 Import Thread</button>
+        <button id="addSlide" class="btn btn-ghost">+ Add Slide</button>
+      </div>
     </div>
     <div id="slides" class="slides-list"></div>
 
@@ -98,7 +101,7 @@
         <button class="icon-btn delete" title="Delete">✕</button>
       </div>
     </div>
-    <textarea class="slide-text" placeholder="Tweet text here... (empty line = paragraph break)" rows="6"></textarea>
+    <textarea class="slide-text" placeholder="Tweet text here... (empty line = paragraph break, **bold**, *italic*, ***both***)" rows="6"></textarea>
   </div>
 </template>
 
@@ -114,6 +117,62 @@
     </div>
   </div>
 </template>
+
+<!-- Import Thread modal -->
+<div id="importModal" class="modal" hidden aria-hidden="true" role="dialog" aria-labelledby="importModalTitle">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-box" role="document">
+    <div class="modal-header">
+      <h3 id="importModalTitle">Import Thread Script</h3>
+      <button class="modal-close icon-btn" data-close aria-label="Close">✕</button>
+    </div>
+
+    <details class="format-help" open>
+      <summary>How to format your script</summary>
+      <div class="help-body">
+        <p><strong>Splitting into slides.</strong> Number each tweet with <code>1.</code> <code>2.</code> <code>3.</code> at the start of a line. Use a blank line <em>inside</em> a tweet to mark a paragraph break (which becomes a visual gap on the slide).</p>
+        <pre class="example">1. Most agency owners are chasing clients.
+
+The smart ones are building systems.
+
+One scales. The other burns you out.
+
+2. I don't think tasks. I think habits, outcomes, and identity.
+
+That's what core values are for.
+
+3. ...</pre>
+        <p class="muted">Also accepted: <code>1)</code> markers, or <code>---</code> on its own line as a separator.</p>
+
+        <p style="margin-top: 14px;"><strong>Word styling.</strong> Inside any tweet you can emphasize text with:</p>
+        <ul class="help-list">
+          <li><code>**bold**</code> → <strong>bold</strong></li>
+          <li><code>*italic*</code> → <em>italic</em></li>
+          <li><code>***both***</code> → <strong><em>bold italic</em></strong></li>
+        </ul>
+        <p class="muted">Asterisks only activate around non-space content, so things like <code>5 * 6 = 30</code> render normally.</p>
+      </div>
+    </details>
+
+    <div class="modal-body">
+      <textarea id="importTextarea" placeholder="Paste your thread script here..." rows="14"></textarea>
+      <div class="import-meta">
+        <span id="importCount" class="import-count">0 slides detected</span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <div class="import-mode" role="radiogroup" aria-label="Import mode">
+        <label><input type="radio" name="importMode" value="replace" checked> Replace current slides</label>
+        <label><input type="radio" name="importMode" value="append"> Add to end</label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" data-close>Cancel</button>
+        <button id="confirmImport" class="btn btn-primary" disabled>Import</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="/static/app.js"></script>
 </body>

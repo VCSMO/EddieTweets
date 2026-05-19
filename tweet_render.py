@@ -2,6 +2,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import io
 import os
+import re
 import subprocess
 import tempfile
 
@@ -55,17 +56,15 @@ def png_bytes_to_mp4_bytes(png_bytes, duration=VIDEO_DURATION_SEC,
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Profiles: map of profile_id -> {display_name, handle, pfp_path}
+# Profiles: map of profile_id -> {display_name, handle, pfp_path, pfp_zoom?}
+# pfp_zoom is optional per profile and overrides the default crop zoom — set
+# to 1.0 to use the full source image (useful when the image is already a
+# composed square).
 PROFILES = {
     "eddie": {
         "display_name": "Eddie Maalouf",
         "handle": "@imakeBADads",
         "pfp_path": os.path.join(BASE_DIR, "eddie-pfp.jpg"),
-    },
-    "zuheir": {
-        "display_name": "Zuheir Daher",
-        "handle": "@Zuheir.ig",
-        "pfp_path": os.path.join(BASE_DIR, "zuheir-pfp.jpg"),
     },
 }
 DEFAULT_PROFILE = "eddie"
@@ -135,10 +134,11 @@ def render_verified_badge(size=24):
 
 
 def wrap_text(text, font, max_width):
+    """Legacy plain-text word wrap. Kept for backwards compat; styled rendering
+    goes through wrap_styled below."""
     paragraphs = text.strip().split("\n\n")
     result = []
     for para in paragraphs:
-        # Preserve single-line-break paragraphs by joining with space then wrap
         words = para.split()
         lines = []
         current = ""
@@ -157,7 +157,216 @@ def wrap_text(text, font, max_width):
     return result
 
 
+# --- Inline markdown (bold / italic / both) -----------------------------------
+
+# Matches ***x*** then **x** then *x*. Each must wrap non-whitespace content
+# (so "5 * 6" or trailing asterisks don't accidentally activate formatting),
+# and cannot span newlines.
+_BOLD_ITALIC_RE = re.compile(r"\*\*\*(\S(?:[^*\n]*?\S)?)\*\*\*")
+_BOLD_RE        = re.compile(r"\*\*(\S(?:[^*\n]*?\S)?)\*\*")
+_ITALIC_RE      = re.compile(r"\*(\S(?:[^*\n]*?\S)?)\*")
+
+
+def parse_inline_markdown(text):
+    """Parse a string of text with inline **bold**, *italic*, ***both*** markers.
+
+    Returns a list of (text_segment, bold, italic) tuples in source order.
+    """
+    # Find spans, longest-first, marking used positions so we don't double-claim.
+    spans = []  # (start, end, content, bold, italic)
+    used = [False] * len(text)
+
+    def claim(m, bold, italic):
+        s, e = m.span()
+        if any(used[s:e]):
+            return False
+        for i in range(s, e):
+            used[i] = True
+        spans.append((s, e, m.group(1), bold, italic))
+        return True
+
+    for m in _BOLD_ITALIC_RE.finditer(text):
+        claim(m, True, True)
+    for m in _BOLD_RE.finditer(text):
+        claim(m, True, False)
+    for m in _ITALIC_RE.finditer(text):
+        claim(m, False, True)
+
+    spans.sort()
+
+    out = []
+    last_end = 0
+    for s, e, content, bold, italic in spans:
+        if s > last_end:
+            out.append((text[last_end:s], False, False))
+        out.append((content, bold, italic))
+        last_end = e
+    if last_end < len(text):
+        out.append((text[last_end:], False, False))
+
+    if not out:
+        out.append((text, False, False))
+    return out
+
+
+def _font_for(fonts, bold, italic):
+    """Pick which font weight to use for a styled span.
+
+    Italics are synthesized via shear at draw time — we still pick a weight
+    here so wrapping/measurement match what gets drawn.
+    """
+    if bold:
+        return fonts["bold"]
+    return fonts["regular"]
+
+
+def _tokenize_run(text, bold, italic):
+    """Split a single styled span into word/space atoms while preserving spacing."""
+    if not text:
+        return []
+    atoms = []
+    # re.split keeps the separators when the pattern is captured
+    for piece in re.split(r"(\s+)", text):
+        if piece == "":
+            continue
+        atoms.append({
+            "text": piece,
+            "bold": bold,
+            "italic": italic,
+            "is_space": piece.isspace(),
+        })
+    return atoms
+
+
+def wrap_styled(text, fonts, max_width):
+    """Wrap markdown-styled text into lines.
+
+    Returns list of paragraphs, each a list of lines, each a list of run dicts
+    of the form ``{"text", "bold", "italic"}``. Runs of identical style on the
+    same line are coalesced so the draw loop can call drawText once per run.
+    """
+    paragraphs = text.strip().split("\n\n")
+    out_paragraphs = []
+    for para in paragraphs:
+        # Build a flat token stream across the paragraph
+        atoms = []
+        for seg_text, bold, italic in parse_inline_markdown(para):
+            atoms.extend(_tokenize_run(seg_text, bold, italic))
+
+        # Wrap atoms into lines
+        lines = [[]]
+        line_w = 0
+        for atom in atoms:
+            font = _font_for(fonts, atom["bold"], atom["italic"])
+            bbox = font.getbbox(atom["text"])
+            atom_w = bbox[2] - bbox[0]
+
+            # If adding a non-space atom would overflow, break to a new line.
+            # Leading spaces on a new line are skipped.
+            if not atom["is_space"] and line_w + atom_w > max_width and lines[-1]:
+                # Trim trailing whitespace off the previous line
+                while lines[-1] and lines[-1][-1]["is_space"]:
+                    line_w -= _font_for(fonts, lines[-1][-1]["bold"], lines[-1][-1]["italic"]).getbbox(lines[-1][-1]["text"])[2]
+                    lines[-1].pop()
+                lines.append([])
+                line_w = 0
+
+            # Don't start a new line with a space
+            if atom["is_space"] and not lines[-1]:
+                continue
+
+            lines[-1].append(atom)
+            line_w += atom_w
+
+        # Strip trailing whitespace on the last line, drop empty lines
+        for line in lines:
+            while line and line[-1]["is_space"]:
+                line.pop()
+        lines = [ln for ln in lines if ln]
+        if not lines:
+            lines = [[]]
+
+        # Coalesce adjacent same-style atoms within each line
+        coalesced_lines = []
+        for line in lines:
+            coalesced = []
+            for atom in line:
+                if coalesced and coalesced[-1]["bold"] == atom["bold"] and coalesced[-1]["italic"] == atom["italic"]:
+                    coalesced[-1]["text"] += atom["text"]
+                else:
+                    coalesced.append({
+                        "text": atom["text"],
+                        "bold": atom["bold"],
+                        "italic": atom["italic"],
+                    })
+            coalesced_lines.append(coalesced)
+
+        out_paragraphs.append(coalesced_lines)
+    return out_paragraphs
+
+
+def measure_styled_block(paragraphs, fonts, line_gap, para_gap):
+    """Total pixel height of a wrapped styled block. Line height uses font
+    metrics from the base (regular) font, so mixed-style lines stay aligned."""
+    base = fonts["regular"]
+    ascent, descent = base.getmetrics()
+    line_h = ascent + descent
+
+    total = 0
+    for pi, lines in enumerate(paragraphs):
+        n = len(lines)
+        if n == 0:
+            n = 1  # empty paragraph still takes one line
+        total += line_h * n + line_gap * max(0, n - 1)
+        if pi < len(paragraphs) - 1:
+            total += para_gap
+    return total
+
+
+def _draw_italic_run(image, xy, text, font, fill, skew=0.18):
+    """Render a single text run with synthesized italic via shear transform.
+
+    Returns the advance width (same as the upright font's width)."""
+    bbox = font.getbbox(text)
+    text_w = bbox[2] - bbox[0]
+    ascent, descent = font.getmetrics()
+    line_h = ascent + descent
+    pad = int(line_h * skew) + 4  # space for shear overflow
+
+    layer_w = text_w + pad * 2
+    layer_h = line_h + 4
+    layer = Image.new("RGBA", (layer_w, layer_h), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    # Draw text at left edge of padded layer, aligned to top of font box
+    ld.text((pad - bbox[0], 0), text, font=font, fill=fill)
+
+    # Shear: top of letter leans right by `pad`. PIL AFFINE is inverse:
+    # destination (dx, dy) reads from source (a*dx + b*dy + c, d*dx + e*dy + f).
+    # Forward T: (sx, sy) -> (sx + skew*(layer_h - sy), sy)
+    # Inverse:    (dx, dy) -> (dx - skew*(layer_h - dy), dy)
+    skewed = layer.transform(
+        layer.size,
+        Image.AFFINE,
+        (1, skew, -skew * layer_h, 0, 1, 0),
+        resample=Image.BICUBIC,
+    )
+    image.paste(skewed, (int(xy[0]) - pad, int(xy[1])), skewed)
+    return text_w
+
+
+def draw_styled_run(image, xy, run, fonts, fill):
+    """Draw a single styled run. Returns advance width."""
+    font = _font_for(fonts, run["bold"], run["italic"])
+    if run["italic"]:
+        return _draw_italic_run(image, xy, run["text"], font, fill)
+    draw = ImageDraw.Draw(image)
+    draw.text(xy, run["text"], font=font, fill=fill)
+    bbox = font.getbbox(run["text"])
+    return bbox[2] - bbox[0]
+
+
 def measure_text_block(paragraphs_lines, font, line_gap, para_gap):
+    """Legacy plain-text measure (kept for callers using wrap_text)."""
     total = 0
     for pi, lines in enumerate(paragraphs_lines):
         for li, line in enumerate(lines):
@@ -182,7 +391,7 @@ def render_tweet(
     font_name_size=46,
     font_handle_size=38,
     font_tweet_size=50,
-    pfp_zoom=1.18,
+    pfp_zoom=None,
     x_padding=80,
     header_gap=44,
     handle_gap=12,
@@ -204,6 +413,8 @@ def render_tweet(
     pfp_path = pfp_path or profile_data["pfp_path"]
     display_name = display_name if display_name is not None else profile_data["display_name"]
     handle = handle if handle is not None else profile_data["handle"]
+    if pfp_zoom is None:
+        pfp_zoom = profile_data.get("pfp_zoom", 1.18)
     palette = THEMES.get(theme, THEMES["dark"])
     bg_color = palette["bg"]
     text_color = palette["text"]
@@ -215,12 +426,18 @@ def render_tweet(
 
     font_name = ImageFont.truetype(FONT_HEAVY, font_name_size)
     font_handle = ImageFont.truetype(FONT_REGULAR, font_handle_size)
-    font_tweet = ImageFont.truetype(FONT_MEDIUM, font_tweet_size)
+    # Tweet body uses Medium for regular runs and Bold for **bold** runs.
+    # Italic is synthesized via shear at draw time using the same weight.
+    tweet_fonts = {
+        "regular": ImageFont.truetype(FONT_MEDIUM, font_tweet_size),
+        "bold":    ImageFont.truetype(FONT_BOLD, font_tweet_size),
+    }
+    font_tweet = tweet_fonts["regular"]
 
     max_text_w = width - (x_padding * 2)
 
-    para_lines = wrap_text(tweet_text, font_tweet, max_text_w)
-    text_h = measure_text_block(para_lines, font_tweet, line_gap, para_gap)
+    para_styled = wrap_styled(tweet_text, tweet_fonts, max_text_w)
+    text_h = measure_styled_block(para_styled, tweet_fonts, line_gap, para_gap)
 
     name_bbox = font_name.getbbox(display_name)
     name_h = name_bbox[3] - name_bbox[1]
@@ -267,14 +484,24 @@ def render_tweet(
     handle_y = text_block_start_y + name_h + handle_gap - handle_bbox[1]
     draw.text((name_x, handle_y), handle, fill=handle_color, font=font_handle)
 
-    # --- Tweet Text ---
+    # --- Tweet Text (styled runs: **bold**, *italic*, ***both***) ---
     text_y = start_y + header_h + header_gap
-    for pi, lines in enumerate(para_lines):
-        for li, line in enumerate(lines):
-            draw.text((x_padding, text_y), line, fill=text_color, font=font_tweet)
-            bbox = font_tweet.getbbox(line)
-            text_y += (bbox[3] - bbox[1]) + line_gap
-        if pi < len(para_lines) - 1:
+    base_font = tweet_fonts["regular"]
+    ascent, descent = base_font.getmetrics()
+    line_h = ascent + descent
+    for pi, lines in enumerate(para_styled):
+        if not lines:
+            text_y += line_h + line_gap
+            continue
+        for li, line_runs in enumerate(lines):
+            x = x_padding
+            for run in line_runs:
+                advance = draw_styled_run(img, (x, text_y), run, tweet_fonts, text_color)
+                x += advance
+            text_y += line_h
+            if li < len(lines) - 1:
+                text_y += line_gap
+        if pi < len(para_styled) - 1:
             text_y += para_gap
 
     return img

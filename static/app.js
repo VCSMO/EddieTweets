@@ -177,6 +177,119 @@
     rebuildAll();
   };
 
+  // --- Thread script parser ---
+  // Splits a pasted thread into individual tweets. Recognized formats:
+  //   "1." / "2." / "3." (or 1) 2) 3)) at the start of a line
+  //   "---" or "===" on its own line
+  // If no markers are found, falls back to triple-newline boundaries.
+  // Within each tweet, blank lines are preserved as paragraph breaks.
+  const parseThreadScript = (raw) => {
+    const text = (raw || "").trim();
+    if (!text) return [];
+
+    const markerRe = /^\s*\d+[\.\)]\s*/;
+    const separatorRe = /^\s*(?:---+|===+)\s*$/;
+
+    const lines = text.split("\n");
+    const slides = [];
+    let current = [];
+    let foundMarker = false;
+
+    const flush = () => {
+      const slide = current.join("\n").trim();
+      if (slide) slides.push(slide);
+      current = [];
+    };
+
+    for (const line of lines) {
+      if (separatorRe.test(line)) {
+        foundMarker = true;
+        flush();
+      } else if (markerRe.test(line)) {
+        foundMarker = true;
+        flush();
+        const remainder = line.replace(markerRe, "");
+        if (remainder.trim()) current.push(remainder);
+      } else {
+        current.push(line);
+      }
+    }
+    flush();
+
+    if (!foundMarker) {
+      // No explicit markers — try triple-newline boundaries
+      const blocks = text.split(/\n{3,}/).map(s => s.trim()).filter(Boolean);
+      if (blocks.length > 1) return blocks;
+      return [text];
+    }
+
+    // Collapse 3+ blank lines inside a slide down to a single blank line,
+    // since that's what the renderer interprets as a paragraph break.
+    return slides.map(s => s.replace(/\n{3,}/g, "\n\n"));
+  };
+
+  // --- Import Thread modal ---
+  const importEls = () => ({
+    modal: document.getElementById("importModal"),
+    textarea: document.getElementById("importTextarea"),
+    count: document.getElementById("importCount"),
+    confirm: document.getElementById("confirmImport"),
+  });
+
+  const updateImportCount = () => {
+    const { textarea, count, confirm } = importEls();
+    if (!textarea || !count || !confirm) return;
+    const parsed = parseThreadScript(textarea.value);
+    const n = parsed.length;
+    if (n === 0) {
+      count.textContent = "0 slides detected";
+      count.classList.remove("has-slides");
+      confirm.disabled = true;
+      confirm.textContent = "Import";
+    } else {
+      count.textContent = `${n} slide${n === 1 ? "" : "s"} detected`;
+      count.classList.add("has-slides");
+      confirm.disabled = false;
+      confirm.textContent = `Import ${n} slide${n === 1 ? "" : "s"}`;
+    }
+  };
+
+  const openImportModal = () => {
+    const { modal, textarea } = importEls();
+    if (!modal) return;
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    updateImportCount();
+    setTimeout(() => textarea?.focus(), 50);
+  };
+
+  const closeImportModal = () => {
+    const { modal } = importEls();
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+  };
+
+  const performImport = () => {
+    const { textarea } = importEls();
+    if (!textarea) return;
+    const parsed = parseThreadScript(textarea.value);
+    if (parsed.length === 0) return;
+
+    const mode = document.querySelector("input[name='importMode']:checked")?.value || "replace";
+    const newSlides = parsed.map(text => ({ id: uid(), text }));
+
+    if (mode === "replace") {
+      state.slides = newSlides;
+    } else {
+      state.slides = state.slides.concat(newSlides);
+    }
+    saveState();
+    rebuildAll();
+    textarea.value = "";
+    closeImportModal();
+  };
+
   // --- Downloads ---
   const downloadOne = async (slideId, num) => {
     const slide = state.slides.find(s => s.id === slideId);
@@ -536,11 +649,16 @@
       b.addEventListener("click", () => setTheme(b.dataset.theme));
     });
 
-    // Profile picker
+    // Profile picker — only shown when there's more than one profile to choose from
+    const profileCount = state.profiles ? Object.keys(state.profiles.profiles || {}).length : 0;
+    const profilePicker = document.querySelector(".profile-picker");
+    if (profilePicker) {
+      profilePicker.hidden = profileCount <= 1;
+    }
     refreshProfileButton();
     buildProfileMenu();
     const profileBtn = document.getElementById("profileBtn");
-    if (profileBtn) {
+    if (profileBtn && profileCount > 1) {
       profileBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         const menu = document.getElementById("profileMenu");
@@ -560,6 +678,30 @@
 
     document.getElementById("addSlide").addEventListener("click", addSlide);
     document.getElementById("downloadAll").addEventListener("click", downloadAll);
+
+    // Import Thread modal
+    const importBtn = document.getElementById("importThread");
+    if (importBtn) importBtn.addEventListener("click", openImportModal);
+
+    const modal = document.getElementById("importModal");
+    if (modal) {
+      // Any [data-close] element (backdrop, ✕ button, Cancel) closes the modal
+      modal.querySelectorAll("[data-close]").forEach(el => {
+        el.addEventListener("click", closeImportModal);
+      });
+    }
+    const importTextarea = document.getElementById("importTextarea");
+    if (importTextarea) {
+      importTextarea.addEventListener("input", updateImportCount);
+    }
+    const confirmImportBtn = document.getElementById("confirmImport");
+    if (confirmImportBtn) {
+      confirmImportBtn.addEventListener("click", performImport);
+    }
+    document.addEventListener("keydown", (e) => {
+      const m = document.getElementById("importModal");
+      if (e.key === "Escape" && m && !m.hidden) closeImportModal();
+    });
 
     bindAdvanced();
     updateAdvancedDefaults();
