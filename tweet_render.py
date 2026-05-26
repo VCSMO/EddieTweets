@@ -244,51 +244,58 @@ def wrap_styled(text, fonts, max_width):
     Returns list of paragraphs, each a list of lines, each a list of run dicts
     of the form ``{"text", "bold", "italic"}``. Runs of identical style on the
     same line are coalesced so the draw loop can call drawText once per run.
+
+    Newline handling:
+      * "\\n\\n"   → paragraph break (larger para_gap between paragraphs)
+      * "\\n"      → hard line break (within a paragraph; uses line_gap)
+      * other ws  → word-wrap normally
     """
     paragraphs = text.strip().split("\n\n")
     out_paragraphs = []
     for para in paragraphs:
-        # Build a flat token stream across the paragraph
-        atoms = []
-        for seg_text, bold, italic in parse_inline_markdown(para):
-            atoms.extend(_tokenize_run(seg_text, bold, italic))
+        # Hard line breaks within a paragraph: each row gets wrapped independently
+        rows = para.split("\n")
+        para_lines = []
+        for row in rows:
+            atoms = []
+            for seg_text, bold, italic in parse_inline_markdown(row):
+                atoms.extend(_tokenize_run(seg_text, bold, italic))
 
-        # Wrap atoms into lines
-        lines = [[]]
-        line_w = 0
-        for atom in atoms:
-            font = _font_for(fonts, atom["bold"], atom["italic"])
-            bbox = font.getbbox(atom["text"])
-            atom_w = bbox[2] - bbox[0]
-
-            # If adding a non-space atom would overflow, break to a new line.
-            # Leading spaces on a new line are skipped.
-            if not atom["is_space"] and line_w + atom_w > max_width and lines[-1]:
-                # Trim trailing whitespace off the previous line
-                while lines[-1] and lines[-1][-1]["is_space"]:
-                    line_w -= _font_for(fonts, lines[-1][-1]["bold"], lines[-1][-1]["italic"]).getbbox(lines[-1][-1]["text"])[2]
-                    lines[-1].pop()
-                lines.append([])
-                line_w = 0
-
-            # Don't start a new line with a space
-            if atom["is_space"] and not lines[-1]:
-                continue
-
-            lines[-1].append(atom)
-            line_w += atom_w
-
-        # Strip trailing whitespace on the last line, drop empty lines
-        for line in lines:
-            while line and line[-1]["is_space"]:
-                line.pop()
-        lines = [ln for ln in lines if ln]
-        if not lines:
             lines = [[]]
+            line_w = 0
+            for atom in atoms:
+                font = _font_for(fonts, atom["bold"], atom["italic"])
+                bbox = font.getbbox(atom["text"])
+                atom_w = bbox[2] - bbox[0]
+
+                # Word-wrap overflow
+                if not atom["is_space"] and line_w + atom_w > max_width and lines[-1]:
+                    while lines[-1] and lines[-1][-1]["is_space"]:
+                        line_w -= _font_for(fonts, lines[-1][-1]["bold"], lines[-1][-1]["italic"]).getbbox(lines[-1][-1]["text"])[2]
+                        lines[-1].pop()
+                    lines.append([])
+                    line_w = 0
+
+                # Skip leading spaces on a fresh line
+                if atom["is_space"] and not lines[-1]:
+                    continue
+
+                lines[-1].append(atom)
+                line_w += atom_w
+
+            # Trim trailing whitespace
+            for line in lines:
+                while line and line[-1]["is_space"]:
+                    line.pop()
+            lines = [ln for ln in lines if ln]
+            # Preserve genuinely blank rows (e.g. user wrote three \n in a row)
+            if not lines:
+                lines = [[]]
+            para_lines.extend(lines)
 
         # Coalesce adjacent same-style atoms within each line
         coalesced_lines = []
-        for line in lines:
+        for line in para_lines:
             coalesced = []
             for atom in line:
                 if coalesced and coalesced[-1]["bold"] == atom["bold"] and coalesced[-1]["italic"] == atom["italic"]:
@@ -300,6 +307,9 @@ def wrap_styled(text, fonts, max_width):
                         "italic": atom["italic"],
                     })
             coalesced_lines.append(coalesced)
+
+        if not coalesced_lines:
+            coalesced_lines = [[]]
 
         out_paragraphs.append(coalesced_lines)
     return out_paragraphs
