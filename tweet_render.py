@@ -239,23 +239,21 @@ def _tokenize_run(text, bold, italic):
 
 
 def wrap_styled(text, fonts, max_width):
-    """Wrap markdown-styled text into lines.
+    """Wrap markdown-styled text into a paragraph/row/line tree.
 
-    Returns list of paragraphs, each a list of lines, each a list of run dicts
-    of the form ``{"text", "bold", "italic"}``. Runs of identical style on the
-    same line are coalesced so the draw loop can call drawText once per run.
+    Returns ``paragraphs[paragraph_idx][row_idx][line_idx]`` where each line
+    is a list of run dicts ``{"text", "bold", "italic"}``. Three vertical
+    gap sizes are recognised downstream:
 
-    Newline handling:
-      * "\\n\\n"   → paragraph break (larger para_gap between paragraphs)
-      * "\\n"      → hard line break (within a paragraph; uses line_gap)
-      * other ws  → word-wrap normally
+      * "\\n\\n"  → paragraph break (para_gap, largest)
+      * "\\n"    → row break (row_gap, between bullets / Enter-once lines)
+      * wrap    → line break inside a row (line_gap, tightest)
     """
     paragraphs = text.strip().split("\n\n")
     out_paragraphs = []
     for para in paragraphs:
-        # Hard line breaks within a paragraph: each row gets wrapped independently
         rows = para.split("\n")
-        para_lines = []
+        out_rows = []
         for row in rows:
             atoms = []
             for seg_text, bold, italic in parse_inline_markdown(row):
@@ -268,7 +266,6 @@ def wrap_styled(text, fonts, max_width):
                 bbox = font.getbbox(atom["text"])
                 atom_w = bbox[2] - bbox[0]
 
-                # Word-wrap overflow
                 if not atom["is_space"] and line_w + atom_w > max_width and lines[-1]:
                     while lines[-1] and lines[-1][-1]["is_space"]:
                         line_w -= _font_for(fonts, lines[-1][-1]["bold"], lines[-1][-1]["italic"]).getbbox(lines[-1][-1]["text"])[2]
@@ -276,58 +273,63 @@ def wrap_styled(text, fonts, max_width):
                     lines.append([])
                     line_w = 0
 
-                # Skip leading spaces on a fresh line
                 if atom["is_space"] and not lines[-1]:
                     continue
 
                 lines[-1].append(atom)
                 line_w += atom_w
 
-            # Trim trailing whitespace
             for line in lines:
                 while line and line[-1]["is_space"]:
                     line.pop()
             lines = [ln for ln in lines if ln]
-            # Preserve genuinely blank rows (e.g. user wrote three \n in a row)
             if not lines:
-                lines = [[]]
-            para_lines.extend(lines)
+                lines = [[]]  # preserve blank rows
 
-        # Coalesce adjacent same-style atoms within each line
-        coalesced_lines = []
-        for line in para_lines:
-            coalesced = []
-            for atom in line:
-                if coalesced and coalesced[-1]["bold"] == atom["bold"] and coalesced[-1]["italic"] == atom["italic"]:
-                    coalesced[-1]["text"] += atom["text"]
-                else:
-                    coalesced.append({
-                        "text": atom["text"],
-                        "bold": atom["bold"],
-                        "italic": atom["italic"],
-                    })
-            coalesced_lines.append(coalesced)
+            # Coalesce adjacent same-style atoms within each line
+            coalesced_row = []
+            for line in lines:
+                coalesced = []
+                for atom in line:
+                    if coalesced and coalesced[-1]["bold"] == atom["bold"] and coalesced[-1]["italic"] == atom["italic"]:
+                        coalesced[-1]["text"] += atom["text"]
+                    else:
+                        coalesced.append({
+                            "text": atom["text"],
+                            "bold": atom["bold"],
+                            "italic": atom["italic"],
+                        })
+                coalesced_row.append(coalesced)
+            out_rows.append(coalesced_row)
 
-        if not coalesced_lines:
-            coalesced_lines = [[]]
-
-        out_paragraphs.append(coalesced_lines)
+        if not out_rows:
+            out_rows = [[[]]]
+        out_paragraphs.append(out_rows)
     return out_paragraphs
 
 
-def measure_styled_block(paragraphs, fonts, line_gap, para_gap):
-    """Total pixel height of a wrapped styled block. Line height uses font
-    metrics from the base (regular) font, so mixed-style lines stay aligned."""
+def measure_styled_block(paragraphs, fonts, line_gap, para_gap, row_gap=None):
+    """Total pixel height of a wrapped styled block.
+
+    Three vertical gaps:
+      * line_gap : between word-wrapped lines inside a single row
+      * row_gap  : between hard-broken rows in the same paragraph (defaults
+                   to line_gap if not provided, for backwards compat)
+      * para_gap : between paragraphs (blank-line separated)
+    """
+    if row_gap is None:
+        row_gap = line_gap
     base = fonts["regular"]
     ascent, descent = base.getmetrics()
     line_h = ascent + descent
 
     total = 0
-    for pi, lines in enumerate(paragraphs):
-        n = len(lines)
-        if n == 0:
-            n = 1  # empty paragraph still takes one line
-        total += line_h * n + line_gap * max(0, n - 1)
+    for pi, rows in enumerate(paragraphs):
+        for ri, lines in enumerate(rows):
+            n = len(lines) if lines else 1
+            total += line_h * n + line_gap * max(0, n - 1)
+            if ri < len(rows) - 1:
+                total += row_gap
         if pi < len(paragraphs) - 1:
             total += para_gap
     return total
@@ -406,7 +408,8 @@ def render_tweet(
     header_gap=44,
     handle_gap=12,
     line_gap=18,
-    para_gap=36,
+    row_gap=32,
+    para_gap=42,
     badge_scale=0.95,
     theme="dark",
 ):
@@ -447,7 +450,7 @@ def render_tweet(
     max_text_w = width - (x_padding * 2)
 
     para_styled = wrap_styled(tweet_text, tweet_fonts, max_text_w)
-    text_h = measure_styled_block(para_styled, tweet_fonts, line_gap, para_gap)
+    text_h = measure_styled_block(para_styled, tweet_fonts, line_gap, para_gap, row_gap)
 
     name_bbox = font_name.getbbox(display_name)
     name_h = name_bbox[3] - name_bbox[1]
@@ -495,22 +498,29 @@ def render_tweet(
     draw.text((name_x, handle_y), handle, fill=handle_color, font=font_handle)
 
     # --- Tweet Text (styled runs: **bold**, *italic*, ***both***) ---
+    # 3-level structure: paragraphs → rows → wrapped lines → runs
+    #   line_gap : between word-wrapped lines inside a single row
+    #   row_gap  : between hard-broken rows (Enter once) in the same paragraph
+    #   para_gap : between paragraphs (blank line / Enter twice)
     text_y = start_y + header_h + header_gap
     base_font = tweet_fonts["regular"]
     ascent, descent = base_font.getmetrics()
     line_h = ascent + descent
-    for pi, lines in enumerate(para_styled):
-        if not lines:
-            text_y += line_h + line_gap
-            continue
-        for li, line_runs in enumerate(lines):
-            x = x_padding
-            for run in line_runs:
-                advance = draw_styled_run(img, (x, text_y), run, tweet_fonts, text_color)
-                x += advance
-            text_y += line_h
-            if li < len(lines) - 1:
-                text_y += line_gap
+    for pi, rows in enumerate(para_styled):
+        for ri, lines in enumerate(rows):
+            if not lines:
+                text_y += line_h
+            else:
+                for li, line_runs in enumerate(lines):
+                    x = x_padding
+                    for run in line_runs:
+                        advance = draw_styled_run(img, (x, text_y), run, tweet_fonts, text_color)
+                        x += advance
+                    text_y += line_h
+                    if li < len(lines) - 1:
+                        text_y += line_gap
+            if ri < len(rows) - 1:
+                text_y += row_gap
         if pi < len(para_styled) - 1:
             text_y += para_gap
 

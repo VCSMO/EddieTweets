@@ -444,7 +444,7 @@
   // --- Advanced settings ---
   const advancedFields = [
     "pfp_zoom", "pfp_size", "font_name_size", "font_handle_size",
-    "font_tweet_size", "line_gap", "para_gap", "header_gap"
+    "font_tweet_size", "line_gap", "row_gap", "para_gap", "header_gap"
   ];
 
   const updateAdvancedDefaults = () => {
@@ -455,7 +455,7 @@
       if (!input) return;
       const override = state.overrides[field];
       const presetVal = preset[field];
-      const defaultVal = { pfp_zoom: 1.18, line_gap: 18, para_gap: 36, header_gap: 44 }[field];
+      const defaultVal = { pfp_zoom: 1.18, line_gap: 18, row_gap: 32, para_gap: 42, header_gap: 44 }[field];
       input.placeholder = String(presetVal ?? defaultVal ?? "");
       if (override !== undefined && override !== null) {
         input.value = override;
