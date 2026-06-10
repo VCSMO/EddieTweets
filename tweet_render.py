@@ -409,7 +409,7 @@ def render_tweet(
     handle_gap=12,
     line_gap=18,
     row_gap=32,
-    para_gap=42,
+    para_gap=64,
     badge_scale=0.95,
     theme="dark",
 ):
